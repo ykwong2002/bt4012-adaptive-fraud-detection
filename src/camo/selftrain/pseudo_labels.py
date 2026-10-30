@@ -58,8 +58,9 @@ def fuse(score: np.ndarray, comm_prop: np.ndarray, anomaly: np.ndarray, pool: np
 
 
 def em_prior(scores: np.ndarray, train_prior: float, iters: int = 100, tol: float = 1e-6) -> float:
-    """Saerens et al. (2002) EM for label shift: re-estimates the positive prior in a new sample from
-    posteriors calibrated on the training prior."""
+    """Saerens et al. (2002) EM for label shift: re-estimates the positive prior in a new sample.
+    `train_prior` must be the prior the posteriors are calibrated to. For a model trained with balanced
+    class weights that is 0.5, not the training base rate (review issue #7)."""
     p = scores.clip(1e-6, 1 - 1e-6); pi_tr = train_prior; pi = train_prior
     for _ in range(iters):
         num = p * pi / pi_tr; den = num + (1 - p) * (1 - pi) / (1 - pi_tr)

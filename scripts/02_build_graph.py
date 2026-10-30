@@ -29,6 +29,8 @@ def main():
         if args.smoke and not have_raw:
             raw_dir = ROOT / "tests" / "fixtures" / "raw_mini"
         raw = load_raw(raw_dir)
+        print("text join:", raw.attrs.get("text_join"))
+        log.note(text_join=raw.attrs.get("text_join"))
         if args.smoke and len(raw) > cfg["smoke"]["n_nodes"]:
             raw = raw.sample(cfg["smoke"]["n_nodes"], random_state=0).sort_values("review_id")
         feats = compute_pit_features(raw)

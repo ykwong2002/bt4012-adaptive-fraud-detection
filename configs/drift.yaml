@@ -1,5 +1,11 @@
+# Label-free drift monitor (src/camo/drift/monitor.py, decisions D8)
 psi_bins: 10
-psi_threshold: 0.2
-ks_alpha: 0.01
-k_consecutive: 2
+k_consecutive: 2            # alarm after this many flagged windows in a row
+# thresholds are calibrated on leave-one-window-out comparisons among the training windows
+null_margin: 1.25           # flag when a statistic exceeds 1.25 x the largest null value ...
+min_psi: 0.1                # ... and at least these floors
+min_ks: 0.05
+alarm_signals: [h_text_raw] # falls back to features_pit when no edge scores exist yet
+# counts since the start of the data grow with time by construction, so they always "drift"
+exclude_features: [u_n_prev, p_n_prev, p_rate_30d, u_first_review, u_days_since_prev]
 signals: [features_pit, llm_fields, h_text_raw]

@@ -17,7 +17,12 @@ TAB, FIG = ROOT / "outputs" / "tables", ROOT / "outputs" / "figures"
 
 def read(name):
     p = TAB / name
-    return pd.read_csv(p) if p.exists() else None
+    if not p.exists():
+        return None
+    try:
+        return pd.read_csv(p)
+    except pd.errors.EmptyDataError:   # e.g. no alarm fired, so no self-training rounds were written
+        return None
 
 
 def headline(tag):
@@ -84,8 +89,9 @@ def drift(tag):
     if m is None:
         return
     fig, ax = plt.subplots(figsize=(7, 3.4)); ax2 = ax.twinx()
-    ax.plot(m["window"], m["psi_mean"], marker="o", color="C0", label="PSI of text-homophily (label-free)")
-    ax.axhline(0.2, color="C0", ls=":", lw=1)
+    ax.plot(m["window"], m["psi_mean"], marker="o", color="C0", label=f"PSI, {m['monitor'].iloc[0]} (label-free)")
+    if "psi_thr" in m:
+        ax.plot(m["window"], m["psi_thr"], color="C0", ls=":", lw=1, label="calibrated threshold")
     ax2.plot(m["window"], m["auc_pr"], marker="s", color="C3", label="incumbent AUC-PR (labelled)")
     for w, a in zip(m["window"], m["alarm"]):
         if a:
@@ -99,19 +105,40 @@ def drift(tag):
 def selftrain(tag):
     for gname in ["raw_graph", "refined_soft"]:
         r = read(f"selftrain_rounds_{tag}_{gname}.csv")
-        if r is None:
+        wins = read(f"selftrain_windows_{tag}_{gname}.csv")
+        if r is None and wins is None:
             continue
+        temporal = wins is not None
         fig, axes = plt.subplots(1, 3, figsize=(12, 3.4))
-        for v, sub in r.groupby("variant"):
-            s = sub.groupby("round").agg(pos=("pseudo_pos_share", "mean"), rec=("probe_minority_recall", "mean"), ap=("chal_eval_ap", "mean"))
-            axes[0].plot(s.index, s["pos"], marker="o", label=v); axes[1].plot(s.index, s["rec"], marker="o", label=v)
-            axes[2].plot(s.index, s["ap"], marker="o", label=v)
-        axes[0].axhline(r["prior"].mean(), color="k", ls="--", lw=1, label="prior")
-        axes[2].axhline(r["inc_eval_ap"].mean(), color="k", ls="--", lw=1, label="incumbent")
-        axes[2].axhline(r["upper_ap"].mean(), color="k", ls=":", lw=1, label="all labels (upper)")
-        axes[0].set_title("pseudo-label positive share"); axes[1].set_title("probe minority recall"); axes[2].set_title("challenger AUC-PR (held-out)")
+        if r is not None and len(r):
+            for v, sub in r.groupby("variant"):
+                s = sub.groupby("round").agg(pos=("pseudo_pos_share", "mean"), rec=("probe_minority_recall", "mean"))
+                axes[0].plot(s.index, s["pos"], marker="o", label=v); axes[1].plot(s.index, s["rec"], marker="o", label=v)
+            axes[0].axhline(r["prior"].mean(), color="k", ls="--", lw=1, label="prior")
+        axes[0].set_title("pseudo-label positive share"); axes[1].set_title("probe minority recall")
+        for ax in axes[:2]:
+            ax.set_xlabel("self-training round")
+        if temporal:
+            # deployed model per window vs the never-retrained incumbent, the no-pseudo-label control and the oracle
+            for v, sub in wins.groupby("variant"):
+                s = sub.groupby("window")["deployed_ap"].mean(); axes[2].plot(s.index, s.values, marker="o", label=f"deployed ({v})")
+            base = wins.groupby("window")[["incumbent_ap", "control_ap", "upper_ap"]].mean()
+            axes[2].plot(base.index, base["incumbent_ap"], "k--", lw=1, label="incumbent")
+            axes[2].plot(base.index, base["control_ap"], "k-.", lw=1, label="control (no pseudo-labels)")
+            axes[2].plot(base.index, base["upper_ap"], "k:", lw=1, label="all labels (oracle)")
+            for wdw in wins.loc[wins["alarm"], "window"].unique():
+                axes[2].axvline(wdw, color="k", alpha=0.12, lw=6)
+            axes[2].set_xlabel("window (shaded = alarm)"); axes[2].set_title("AUC-PR per window")
+        else:
+            for v, sub in r.groupby("variant"):
+                s = sub.groupby("round")["chal_eval_ap"].mean(); axes[2].plot(s.index, s.values, marker="o", label=v)
+            axes[2].axhline(r["inc_eval_ap"].mean(), color="k", ls="--", lw=1, label="incumbent")
+            if "control_eval_ap" in r:
+                axes[2].axhline(r["control_eval_ap"].mean(), color="k", ls="-.", lw=1, label="control (no pseudo-labels)")
+            axes[2].axhline(r["upper_ap"].mean(), color="k", ls=":", lw=1, label="all labels (upper)")
+            axes[2].set_xlabel("self-training round"); axes[2].set_title("challenger AUC-PR (held-out)")
         for ax in axes:
-            ax.set_xlabel("self-training round"); ax.legend(fontsize=7)
+            ax.legend(fontsize=7)
         fig.suptitle(f"Self-training bias audit ({gname})", y=1.02)
         fig.tight_layout(); fig.savefig(FIG / f"fig_selftrain_{tag}_{gname}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
