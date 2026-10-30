@@ -79,6 +79,8 @@ docs/               proposal, guidelines, decisions.md, data_sources.md, acknowl
 
 ## How to work
 
+GitHub: https://github.com/ykwong2002/bt4012-adaptive-fraud-detection (public; clone, branch, PR to `main`).
+
 ```
 make setup        # uv sync (+dev)
 make test         # pytest

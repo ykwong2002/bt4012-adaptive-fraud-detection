@@ -10,6 +10,8 @@ as an early-warning drift monitor, and on trigger a challenger is retrained from
 explicit audit for normal-class bias. Dataset: YelpChi (graph version from CARE-GNN; raw text and
 dates from Rayana & Akoglu 2015, rebuilt into the same graph).
 
+Repo: https://github.com/ykwong2002/bt4012-adaptive-fraud-detection
+
 Proposal: `docs/proposal.pdf`. Design log: `docs/decisions.md`. Agent/team context: `AGENTS.md`.
 
 ## Setup
