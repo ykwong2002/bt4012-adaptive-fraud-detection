@@ -26,7 +26,19 @@ def headline(tag):
     parts = [p for p in parts if p is not None]
     if not parts:
         return
-    df = pd.concat(parts); df = df[df["fold"].str.startswith("test_w")]
+    df = pd.concat(parts)
+    if not df["fold"].str.startswith("test_w").any():      # stratified (no windows): one bar per model and graph
+        t = df[df["fold"] == "test"].groupby(["model", "graph"])["auc_pr"].agg(["mean", "std"]).reset_index()
+        fig, ax = plt.subplots(figsize=(6, 3.4))
+        graphs = sorted(t["graph"].unique()); models = sorted(t["model"].unique()); wdt = 0.8 / len(graphs)
+        for i, gname in enumerate(graphs):
+            sub = t[t["graph"] == gname].set_index("model").reindex(models)
+            ax.bar(np.arange(len(models)) + i * wdt, sub["mean"], wdt, yerr=sub["std"].fillna(0), capsize=3, label=gname)
+        ax.set_xticks(np.arange(len(models)) + wdt * (len(graphs) - 1) / 2); ax.set_xticklabels(models)
+        ax.set_ylabel("AUC-PR (test)"); ax.set_title(f"{tag}: {df['protocol'].iloc[0]} split, mean ± std over seeds"); ax.legend(fontsize=8)
+        fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150); plt.close(fig)
+        return
+    df = df[df["fold"].str.startswith("test_w")]
     df["window"] = df["fold"].str.split("_w").str[1].astype(int)
     models = sorted(df["model"].unique())
     fig, axes = plt.subplots(1, len(models), figsize=(4.2 * len(models), 3.4), sharey=True)

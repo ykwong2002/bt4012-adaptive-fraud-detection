@@ -1,0 +1,9 @@
+model,graph,protocol,fold,auc_pr,auroc,recall@5%,recall@10%,n_seeds
+ae,raw_graph,stratified,test,0.2088 ± 0.0068,0.6101 ± 0.0058,0.0936 ± 0.0079,0.176 ± 0.0079,5
+ae,raw_graph,stratified,val,0.2078 ± 0.0107,0.6113 ± 0.0159,0.0947 ± 0.0065,0.1774 ± 0.0087,5
+care,raw_graph,stratified,test,0.7771 ± 0.0059,0.9346 ± 0.0029,0.3217 ± 0.0041,0.5557 ± 0.0038,5
+care,raw_graph,stratified,val,0.7762 ± 0.0117,0.9329 ± 0.0039,0.3239 ± 0.0037,0.5552 ± 0.0101,5
+catboost,raw_graph,stratified,test,0.8924 ± 0.0047,0.9708 ± 0.0018,0.338 ± 0.0023,0.635 ± 0.0031,5
+catboost,raw_graph,stratified,val,0.8887 ± 0.0107,0.9688 ± 0.0035,0.338 ± 0.0032,0.6343 ± 0.0085,5
+wsage,raw_graph,stratified,test,0.7957 ± 0.0067,0.9412 ± 0.003,0.3262 ± 0.0027,0.5692 ± 0.0076,5
+wsage,raw_graph,stratified,val,0.7937 ± 0.0117,0.9395 ± 0.0039,0.3261 ± 0.0026,0.5681 ± 0.0092,5
