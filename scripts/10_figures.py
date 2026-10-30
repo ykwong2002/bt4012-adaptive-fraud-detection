@@ -124,7 +124,7 @@ def main():
     for fn in (headline, distil, tau_sweep, drift, selftrain, adversarial):
         fn(a.tag)
     if a.tag == "raw":
-        headline("mat")
+        headline("mat"); selftrain("mat")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 
