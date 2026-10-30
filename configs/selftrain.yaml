@@ -11,3 +11,4 @@ variants:
   balanced_loss:    {per_class_threshold: false, prior_match: false, balanced_loss: true}
   all:              {per_class_threshold: true,  prior_match: true,  balanced_loss: true}
 confidence_quantile: 0.9
+prior_source: train   # train | em  (EM label-shift estimate is always reported as a diagnostic)
