@@ -111,7 +111,7 @@ def main():
                 drift_rows.append({"level": level, "seed": seed, "window": k, "psi_h_text": ps,
                                    "mean_h_text": float(np.nanmean(h_raw[cur])), "n_injected": int(inj_mask[cur].sum())})
             al = trigger(np.array(flags), dcfg["k_consecutive"])
-            for i, k in enumerate(plan["test"]):
+            for i in range(len(plan["test"])):
                 drift_rows[-len(plan["test"]) + i]["alarm"] = bool(al[i])
             print(f"level {level} seed {seed}: injected={len(inj)} alarm windows={[k for k, a in zip(plan['test'], al) if a]}")
         if args.recover and level == max(float(v) for v in args.levels.split(",")):
