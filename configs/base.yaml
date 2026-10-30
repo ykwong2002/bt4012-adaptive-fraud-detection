@@ -1,0 +1,28 @@
+# paths are relative to the repo root
+paths:
+  mat_zip_url: https://github.com/YingtongDou/CARE-GNN/raw/master/data/YelpChi.zip
+  mat_zip_sha256: 3a31296b951e6c8158dddb783ff2c62709fa987d106bbe21e59f8e119053cec3
+  mat_dir: data/raw/yelpchi_mat
+  raw_dir: data/raw/yelpchi_raw
+  processed_dir: data/processed
+  llm_dir: data/llm
+  outputs_dir: outputs
+
+graph:
+  max_reviews_per_product: 800     # GraphConsis filter that yields the 45,954-node graph
+  published:
+    n_nodes: 45954
+    n_products: 182
+    fraud_rate: 0.1453
+    edges: {rur: 49315, rtr: 573616, rsr: 3402743}
+  tolerance: {nodes: 0.02, edges: 0.10}
+
+windows:
+  n_windows: 8                     # equal-count temporal windows
+  n_train_windows: 3               # incumbent trained on the first k windows
+  n_val_windows: 1                 # thresholds (tau, PSI, k) tuned here only
+
+seeds: [0, 1, 2, 3, 4]
+smoke:
+  n_nodes: 2000
+  seeds: [0]

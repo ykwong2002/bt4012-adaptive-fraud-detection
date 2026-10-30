@@ -1,0 +1,26 @@
+# data (raw is obtained per data/README.md; processed is rebuilt by scripts)
+data/raw/
+data/processed/
+# keep the committed LLM caches, ignore scratch
+data/llm/*.tmp
+data/llm/batches/
+# outputs: final figures/tables are committed, runs are not
+outputs/runs/
+# env / secrets
+.env
+.venv/
+# python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+# notebooks checkpoints
+.ipynb_checkpoints/
+# os / editors
+.DS_Store
+.vscode/
+.idea/
+
+# smoke-run artefacts are never committed
+outputs/**/*smoke*

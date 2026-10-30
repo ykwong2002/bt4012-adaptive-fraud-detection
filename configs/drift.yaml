@@ -1,0 +1,5 @@
+psi_bins: 10
+psi_threshold: 0.2
+ks_alpha: 0.01
+k_consecutive: 2
+signals: [features_pit, llm_fields, h_text_raw]

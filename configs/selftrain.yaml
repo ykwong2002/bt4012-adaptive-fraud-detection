@@ -1,0 +1,13 @@
+probe_labels_per_window: 100
+pseudo:
+  community_relations: [rur, rsr_weighted]
+  louvain_resolution: 1.0
+  ae_hidden: 16
+rounds: 5
+variants:
+  naive:            {per_class_threshold: false, prior_match: false, balanced_loss: false}
+  per_class:        {per_class_threshold: true,  prior_match: false, balanced_loss: false}
+  prior_match:      {per_class_threshold: false, prior_match: true,  balanced_loss: false}
+  balanced_loss:    {per_class_threshold: false, prior_match: false, balanced_loss: true}
+  all:              {per_class_threshold: true,  prior_match: true,  balanced_loss: true}
+confidence_quantile: 0.9

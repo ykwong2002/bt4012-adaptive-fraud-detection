@@ -1,0 +1,41 @@
+[project]
+name = "camo"
+version = "0.1.0"
+description = "BT4012 Group 05 - Camouflage-aware graph reconstruction for review-fraud detection under concept drift"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "numpy>=1.26",
+    "pandas>=2.2",
+    "pyarrow>=16",
+    "scipy>=1.13",
+    "scikit-learn>=1.5",
+    "networkx>=3.3",
+    "torch>=2.4",
+    "torch-geometric>=2.6",
+    "catboost>=1.2",
+    "sentence-transformers>=3.0",
+    "anthropic>=0.40",
+    "pyyaml>=6",
+    "matplotlib>=3.9",
+    "tqdm>=4.66",
+    "python-dotenv>=1.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "nbstripout>=0.7", "jupyter>=1.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/camo"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

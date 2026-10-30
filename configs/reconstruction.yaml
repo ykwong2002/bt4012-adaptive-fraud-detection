@@ -1,0 +1,13 @@
+embedding_model: sentence-transformers/all-MiniLM-L6-v2
+llm:
+  review_model: claude-haiku-5-5
+  pair_model: claude-haiku-5-5
+  calibration_model: claude-sonnet-5-5
+  n_pairs_per_relation: 6000
+  n_retest_pairs: 500
+scorer:
+  kind: ridge          # ridge | mlp
+  alpha: 1.0
+rewire:
+  mode: soft           # soft | hard
+  tau_grid: [0.2, 0.3, 0.4, 0.5, 0.6]
