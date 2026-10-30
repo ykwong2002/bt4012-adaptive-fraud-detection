@@ -38,7 +38,7 @@ target-version = "py311"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B"]
-ignore = ["E731", "E741", "B905"]
+ignore = ["E731", "E741", "B905", "E501", "E702"]  # compact style: long lines and semicolons allowed
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
