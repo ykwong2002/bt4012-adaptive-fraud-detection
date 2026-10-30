@@ -23,7 +23,7 @@ def main(n_users=60, n_products=8, n_reviews=400, seed=0, big_product_reviews=12
     pw /= pw.sum()
     rows, texts = [], []
     base = np.datetime64("2010-01-01")
-    for i in range(n_reviews):
+    for _ in range(n_reviews):
         u = users[rng.integers(n_users)]
         p = prods[rng.choice(n_products, p=pw)]
         fraud = rng.random() < 0.15
