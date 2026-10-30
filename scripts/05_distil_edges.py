@@ -45,10 +45,13 @@ def main():
     ok["u_node"] = rid_to_node.loc[ok["u"]].to_numpy(); ok["v_node"] = rid_to_node.loc[ok["v"]].to_numpy()
     scorers, metrics = fit_and_evaluate(ok, emb, fields, seed=0, alpha=rcfg["scorer"]["alpha"])
     rt = retest_agreement(ps)
-    metrics["llm_retest_agreement_spearman"] = rt["spearman"]; metrics["llm_retest_agreement_n"] = rt["n"]
+    metrics["llm_test_retest_spearman"] = rt["spearman"]; metrics["llm_test_retest_n"] = rt["n"]
     metrics.to_csv(TAB / f"distil_metrics_{tag}.csv", index=False)
     print(metrics.round(3).to_string(index=False)); print("test-retest:", rt)
 
+    import pickle
+    with open(ROOT / cfg["paths"]["processed_dir"] / f"edge_scorer_{tag}.pkl", "wb") as fh:
+        pickle.dump(scorers["all"], fh)
     scores = {}
     for r, e in g.edges.items():
         scores[r] = scorers["all"].predict(e[0], e[1], np.full(e.shape[1], r), emb, fields) if e.shape[1] else np.zeros(0, np.float32)

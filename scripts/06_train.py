@@ -68,7 +68,7 @@ def run_model(name, g, x, train_idx, folds, seed, smoke, rho):
 def main():
     p = parser(__doc__)
     p.add_argument("--weights", default=None, help="npz of edge scores per relation (from scripts/05)")
-    p.add_argument("--mode", choices=["soft", "hard"], default=None)
+    p.add_argument("--mode", choices=["soft", "softrank", "hard"], default=None)
     p.add_argument("--tau", type=float, default=0.0)
     p.add_argument("--models", default="wsage,care,catboost,ae")
     p.add_argument("--rho", type=float, default=0.5, help="CARE-static keep ratio")
@@ -78,7 +78,7 @@ def main():
     source = resolve_source(args.source)
     g = load_graph(processed_path(source, args.smoke))
     weights = load_weights(args.weights, g)
-    graph_name = "raw_graph" if weights is None else f"refined_{args.mode}{'' if args.mode == 'soft' else f'_tau{args.tau}'}"
+    graph_name = "raw_graph" if weights is None else f"refined_{args.mode}{f'_tau{args.tau}' if args.mode == 'hard' else ''}"
     tag = args.tag or f"{source}{'_smoke' if args.smoke else ''}_{graph_name}"
     log = RunLog(f"06_train_{tag}", {**cfg, **vars(args)})
     seeds = cfg["smoke"]["seeds"] if args.smoke else cfg["seeds"]

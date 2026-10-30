@@ -42,6 +42,9 @@ def apply_rewiring(edges, weights, mode: str | None, tau: float = 0.0):
         return edges, None
     if mode == "soft":
         return edges, weights
+    if mode == "softrank":   # per-relation percentile rank of the score: same ordering, full [0,1] spread
+        from scipy.stats import rankdata
+        return edges, {r: (rankdata(w) / max(1, len(w))).astype(np.float32) if len(w) else w for r, w in weights.items()}
     if mode == "hard":
         return {r: e[:, weights[r] >= tau] for r, e in edges.items()}, None
     raise ValueError(mode)

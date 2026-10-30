@@ -23,6 +23,8 @@ make test
 ```
 
 On a corporate network with TLS interception, prefix uv calls with `UV_SYSTEM_CERTS=1`.
+No API key is needed for anything except `scripts/04_llm_score.py`; every other step runs from the
+committed LLM caches, and `--mock` gives an offline stand-in for smoke tests (never for results).
 
 Raw review text is obtained by email from the dataset author; see `data/README.md`.
 
@@ -34,7 +36,7 @@ Raw review text is obtained by email from the dataset author; see `data/README.m
 | EDA + published-vs-rebuilt table | `uv run python scripts/03_eda.py` | `outputs/tables/eda_*.csv`, `outputs/figures/eda_*.png` |
 | LLM scoring (dry run first) | `uv run python scripts/04_llm_score.py --dry-run` | cost estimate; then `data/llm/*.parquet` |
 | distil edge scorer + rewire | `uv run python scripts/05_distil_edges.py` | `data/processed/edge_scores.npz` |
-| train raw vs refined, 5 seeds | `uv run python scripts/06_train.py` | `outputs/tables/results_*.csv` |
+| train raw vs refined, 5 seeds | `uv run python scripts/06_train.py` then `... --weights data/processed/edge_scores_raw.npz --mode soft` (and `--mode hard --tau 0.5`) | `outputs/tables/results_*.csv` |
 | drift monitors | `uv run python scripts/07_drift.py` | `outputs/tables/drift_*.csv` |
 | self-training + bias audit | `uv run python scripts/08_selftrain.py` | `outputs/tables/selftrain_*.csv` |
 | adversarial injection | `uv run python scripts/09_adversarial.py` | `outputs/tables/adversarial_*.csv` |

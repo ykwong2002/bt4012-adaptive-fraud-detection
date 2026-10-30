@@ -105,6 +105,6 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
-- 2026-10-30: repo scaffolded; `.mat` loader + EDA in progress; raw text requested from the dataset author.
+- 2026-10-30: full pipeline (scripts 01–10) runs end to end on the synthetic fixture in `--smoke --mock` mode; `.mat` baselines running; raw text requested from the dataset author (nothing text-dependent can be reported until it lands).
 - Pivot date **8 Nov**: if raw text has not arrived, switch to the graph-only track (see `docs/decisions.md`).
 - Experiment freeze **15 Nov**; 16–20 Nov report, slides, video.
