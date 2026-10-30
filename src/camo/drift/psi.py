@@ -19,5 +19,5 @@ def psi(reference: np.ndarray, current: np.ndarray, bins: int = 10, eps: float =
     return float(np.sum((c - r) * np.log(c / r)))
 
 
-def psi_table(ref: "np.ndarray", cur: "np.ndarray", names: list[str], bins: int = 10) -> dict[str, float]:
+def psi_table(ref: np.ndarray, cur: np.ndarray, names: list[str], bins: int = 10) -> dict[str, float]:
     return {n: psi(ref[:, j], cur[:, j], bins) for j, n in enumerate(names)}

@@ -26,7 +26,7 @@ class Graph:
     def n(self) -> int:
         return self.x.shape[0]
 
-    def subgraph(self, keep: np.ndarray) -> "Graph":
+    def subgraph(self, keep: np.ndarray) -> Graph:
         """Induced subgraph on node indices `keep` (sorted), relabelled 0..k-1."""
         keep = np.asarray(keep)
         remap = -np.ones(self.n, dtype=np.int64)

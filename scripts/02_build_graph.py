@@ -3,8 +3,8 @@ Writes data/processed/graph_<source>[_smoke].npz (+ _nodes.parquet for raw)."""
 from __future__ import annotations
 
 import numpy as np
-
 from _common import ROOT, load_config, parser, processed_path, resolve_source
+
 from camo.data.features_pit import FEATURES, compute_pit_features
 from camo.data.graph_build import build_graph, compare_to_published
 from camo.data.load_mat import load_mat, save_graph

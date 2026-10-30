@@ -55,7 +55,7 @@ def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke
     edges, weights = apply_rewiring(g.edges, weights, mode, tau)
     if g.dates is None:
         tr, va, te = stratified_split(g.y, seed)
-        f = lambda name, idx: Fold(name, idx, edges, weights)  # noqa: E731
+        f = lambda name, idx: Fold(name, idx, edges, weights)
         return "stratified", tr, [f("train", tr), f("val", va), f("test", te)]
     w = equal_count_windows(g.dates, cfg["windows"]["n_windows"])
     plan = temporal_plan(w, cfg["windows"]["n_train_windows"], cfg["windows"]["n_val_windows"])

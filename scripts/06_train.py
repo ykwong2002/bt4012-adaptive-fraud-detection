@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import numpy as np
 import pandas as pd
-
 from _common import ROOT, load_config, parser, processed_path, resolve_source
+
 from camo.data.load_mat import load_graph
 from camo.eval.metrics import evaluate, summarise
 from camo.eval.protocol import build_folds
@@ -39,11 +39,11 @@ def run_model(name, g, x, train_idx, folds, seed, smoke, rho):
     if name in ("wsage", "care"):
         if name == "care":
             s = label_aware_scores(x, y, train_idx, seed)
-            fe = lambda f: care_filter_all(f.edges, s, rho)   # noqa: E731
-            fw = lambda f: None                                # noqa: E731  (filter is unweighted)
+            fe = lambda f: care_filter_all(f.edges, s, rho)
+            fw = lambda f: None
         else:
-            fe = lambda f: f.edges   # noqa: E731
-            fw = lambda f: f.weights  # noqa: E731
+            fe = lambda f: f.edges
+            fw = lambda f: f.weights
         gtr = RelGraph(g.n, fe(tr), fw(tr)); gva = RelGraph(g.n, fe(va), fw(va))
         model = train_wsage(x, y, gtr, train_idx, va.eval_idx, gva, seed, epochs=epochs,
                             k_eval=50 if not smoke else 20)

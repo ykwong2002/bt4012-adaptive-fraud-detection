@@ -10,8 +10,8 @@ from pathlib import Path
 import numpy as np
 
 OUT = Path(__file__).parent / "raw_mini"
-WORDS_GOOD = "the staff were friendly our server remembered the lamb shank came with roasted garlic mash and the wait was twenty minutes on a friday".split()
-WORDS_FAKE = "amazing best ever great place love it highly recommend wonderful excellent perfect fantastic must visit".split()
+WORDS_GOOD = ["the", "staff", "were", "friendly", "our", "server", "remembered", "the", "lamb", "shank", "came", "with", "roasted", "garlic", "mash", "and", "the", "wait", "was", "twenty", "minutes", "on", "a", "friday"]
+WORDS_FAKE = ["amazing", "best", "ever", "great", "place", "love", "it", "highly", "recommend", "wonderful", "excellent", "perfect", "fantastic", "must", "visit"]
 
 
 def main(n_users=60, n_products=8, n_reviews=400, seed=0, big_product_reviews=120):
@@ -38,11 +38,9 @@ def main(n_users=60, n_products=8, n_reviews=400, seed=0, big_product_reviews=12
     # make sure product 0 exceeds the fixture threshold
     OUT.mkdir(parents=True, exist_ok=True)
     with open(OUT / "metadata", "w") as f:
-        for r in rows:
-            f.write("\t".join(map(str, r)) + "\n")
+        f.writelines("\t".join(map(str, r)) + "\n" for r in rows)
     with open(OUT / "reviewContent", "w") as f:
-        for t in texts:
-            f.write("\t".join(t) + "\n")
+        f.writelines("\t".join(t) + "\n" for t in texts)
     print(f"wrote {len(rows)} reviews to {OUT}")
 
 

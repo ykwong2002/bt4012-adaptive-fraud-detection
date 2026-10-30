@@ -10,8 +10,8 @@ import pickle
 
 import numpy as np
 import pandas as pd
-
 from _common import ROOT, load_config, parser, processed_path, resolve_source
+
 from camo.adversarial.inject import inject_reviews
 from camo.data.features_pit import compute_pit_features
 from camo.data.graph_build import build_graph
@@ -81,7 +81,6 @@ def main():
             fields, _ = fields_matrix(nt, rf_aug)
             scores = {r: scorer.predict(e[0], e[1], np.full(e.shape[1], r), emb, fields) if e.shape[1] else np.zeros(0, np.float32)
                       for r, e in g.edges.items()}
-            w = equal_count_windows(g0.dates, cfg["windows"]["n_windows"])  # window ids from the un-injected calendar
             # injected nodes are assigned to the window whose date range contains them
             node_w = np.full(g.n, -1)
             for k, (s, e, _) in wb.items():

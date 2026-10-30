@@ -23,7 +23,7 @@ def audit_round(pseudo_idx: np.ndarray, pseudo_lab: np.ndarray, comm: np.ndarray
     top = np.argsort(-sp)[:k]
     rec = float(yp[top].sum() / max(1, yp.sum()))
     ap = float(average_precision_score(yp, sp)) if yp.sum() > 0 and yp.sum() < len(yp) else np.nan
-    return {"n_pseudo": int(len(pseudo_idx)), "pseudo_pos_share": pos_share, "prior": prior,
+    return {"n_pseudo": len(pseudo_idx), "pseudo_pos_share": pos_share, "prior": prior,
             "pos_share_minus_prior": pos_share - prior, "comm_pos_share_std": float(np.std(list(cp.values()))) if cp else np.nan,
             "frac_comms_all_negative": float(np.mean([v == 0 for v in cp.values()])) if cp else np.nan,
             "pos_threshold": thr, "probe_minority_recall": rec, "probe_auc_pr": ap}

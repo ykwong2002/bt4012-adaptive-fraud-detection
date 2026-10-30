@@ -18,7 +18,7 @@ def evaluate(y: np.ndarray, s: np.ndarray) -> dict[str, float]:
         return {"auc_pr": np.nan, "auroc": np.nan, "recall@5%": np.nan, "recall@10%": np.nan, "n": len(y), "n_pos": int(y.sum())}
     return {"auc_pr": float(average_precision_score(y, s)), "auroc": float(roc_auc_score(y, s)),
             "recall@5%": recall_at_k(y, s, 0.05), "recall@10%": recall_at_k(y, s, 0.10),
-            "n": int(len(y)), "n_pos": int(y.sum())}
+            "n": len(y), "n_pos": int(y.sum())}
 
 
 def summarise(rows: list[dict], by: list[str]) -> pd.DataFrame:

@@ -24,3 +24,6 @@ __pycache__/
 
 # smoke-run artefacts are never committed
 outputs/**/*smoke*
+
+# catboost training logs
+catboost_info/

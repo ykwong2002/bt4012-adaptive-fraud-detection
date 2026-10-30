@@ -36,6 +36,10 @@ packages = ["src/camo"]
 line-length = 100
 target-version = "py311"
 
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B"]
+ignore = ["E731", "E741", "B905"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"

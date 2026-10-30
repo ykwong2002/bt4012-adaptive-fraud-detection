@@ -9,7 +9,13 @@ from camo.models.autoencoder import ae_anomaly_scores
 from camo.models.catboost_model import make_table, train_catboost
 from camo.selftrain.bias_audit import audit_round, collapse_flag
 from camo.selftrain.challenger import fit_challenger, promote
-from camo.selftrain.pseudo_labels import community_labels, community_propensity, em_prior, fuse, select_pseudo
+from camo.selftrain.pseudo_labels import (
+    community_labels,
+    community_propensity,
+    em_prior,
+    fuse,
+    select_pseudo,
+)
 
 
 def ap(y, s, idx):

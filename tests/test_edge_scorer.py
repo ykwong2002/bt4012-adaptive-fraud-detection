@@ -1,7 +1,7 @@
 import numpy as np
 import pandas as pd
 
-from camo.graph.edge_scorer import EdgeScorer, fit_and_evaluate, pair_features, retest_agreement
+from camo.graph.edge_scorer import fit_and_evaluate, pair_features, retest_agreement
 
 
 def test_pair_features_shapes():

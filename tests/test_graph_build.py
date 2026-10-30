@@ -1,5 +1,4 @@
 import numpy as np
-import pandas as pd
 
 from camo.data.graph_build import build_graph, build_relations, filter_products
 

@@ -26,7 +26,7 @@ def care_filter(edges: np.ndarray, s: np.ndarray, rho: float) -> np.ndarray:
     centre, nb = e[0], e[1]
     dist = np.abs(s[centre] - s[nb])
     order = np.lexsort((dist, centre))
-    centre_o, nb_o, dist_o = centre[order], nb[order], dist[order]
+    centre_o, nb_o = centre[order], nb[order]
     first = np.r_[True, centre_o[1:] != centre_o[:-1]]
     start = np.maximum.accumulate(np.where(first, np.arange(len(centre_o)), 0))
     rank = np.arange(len(centre_o)) - start

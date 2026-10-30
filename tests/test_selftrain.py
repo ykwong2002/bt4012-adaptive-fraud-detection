@@ -1,7 +1,12 @@
 import numpy as np
 
 from camo.selftrain.bias_audit import collapse_flag
-from camo.selftrain.pseudo_labels import community_labels, community_propensity, em_prior, select_pseudo
+from camo.selftrain.pseudo_labels import (
+    community_labels,
+    community_propensity,
+    em_prior,
+    select_pseudo,
+)
 
 
 def test_select_pseudo_naive_vs_per_class():

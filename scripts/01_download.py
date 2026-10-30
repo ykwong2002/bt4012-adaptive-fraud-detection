@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "src"))
-from camo import ROOT, load_config  # noqa: E402
+from camo import ROOT, load_config
 
 
 def main():
