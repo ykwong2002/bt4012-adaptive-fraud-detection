@@ -2,6 +2,36 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D10 2026-10-30 Adversarial runs keep the clean graph's windows and respect the product cap
+Injected reviews only go to products with room under the 800-review filter (otherwise the filter
+deletes the whole product, training reviews included), and windows reuse the clean graph's date
+boundaries (recomputing equal-count windows on the bigger graph moved the training cutoff). Script 09
+asserts the training set and its features are identical at every injection level.
+
+## D9 2026-10-30 Self-training is alarm-triggered, time-respecting, and compared against a control
+On temporal graphs the post-training windows are walked in order; at an alarm in window t the
+challenger is built only from what exists at the end of t (graph, communities, pseudo-labels, probe
+labels) and first used on t+1. Rejected: pooling all later windows at once, which let later reviews
+leak into earlier ones and never connected the monitor to retraining. The incumbent, challengers and a
+no-pseudo-label control share one learner and settings, so `pseudo_label_gain` measures what the
+pseudo-labels add (before, the incumbent had a lower learning rate and the challenger always won).
+EM label-shift estimates start from prior 0.5 because the models use balanced class weights; EM stays
+a diagnostic and the training base rate remains the default prior.
+
+## D8 2026-10-30 Drift thresholds are calibrated effect sizes, not p-values
+With ~5.7k reviews per window, KS p < 0.01 flags every window. Signals use PSI and the KS statistic;
+thresholds are 1.25 x the largest value seen when each training window is compared with the other
+training windows (with floors PSI 0.1, KS 0.05). Features that grow with time by construction
+(u_n_prev, p_n_prev, p_rate_30d, u_first_review, u_days_since_prev) are excluded from the monitor.
+
+## D7 2026-10-30 Pair prompt v2: score "same kind of evidence", never penalise similarity
+Prompt v1 gave low fit to templated, near-duplicate or coordinated pairs. Those are mostly fraud-fraud
+edges, the few same-label edges a fraud review has on R-S-R / R-T-R, so v1 would have removed the edges
+we want to keep. v2 scores whether both texts carry the same kind of evidence (both detailed first-hand,
+or both generic/promotional); camouflage edges join opposite kinds and score low. Pair judgements are
+cached with `prompt_version`; scripts/05 uses only the current version and prints a direction check
+(cross-label edges must get lower weights than same-label edges, labels used for this check only).
+
 ## D6 2026-10-30 Louvain runs on R-U-R ∪ scorer-weighted R-S-R, not on plain R-S-R
 Plain R-S-R (same product & star) is a union of near-cliques, so Louvain just returns product×star
 blocks and "community propensity" collapses to a per-product mean, smearing normal-class bias.

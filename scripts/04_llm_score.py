@@ -102,9 +102,10 @@ def main():
         n_per = 30 if args.smoke else rcfg["llm"]["n_pairs_per_relation"]
         pairs = score_pairs.sample_pairs(g.edges, eligible, emb, n_per, seed=0)
         pairs.to_parquet(llm_dir / "pair_sample.parquet", index=False) if llm_dir.exists() else None
-        cache = ParquetCache(llm_dir / "pair_scores.parquet", ["relation", "u", "v", "swap"])
+        cache = ParquetCache(llm_dir / "pair_scores.parquet", score_pairs.PAIR_CACHE_KEY, score_pairs.PAIR_CACHE_DEFAULTS)
         rid = nt["review_id"].to_numpy()
-        keys = [(r.relation, int(rid[r.u_node]), int(rid[r.v_node]), 0) for r in pairs.itertuples()]
+        ver = score_pairs.PAIR_PROMPT_VERSION
+        keys = [(r.relation, int(rid[r.u_node]), int(rid[r.v_node]), 0, ver) for r in pairs.itertuples()]
         have = cache.have()
         todo = pairs[[k not in have for k in keys]]
         n_retest = 10 if args.smoke else rcfg["llm"]["n_retest_pairs"]

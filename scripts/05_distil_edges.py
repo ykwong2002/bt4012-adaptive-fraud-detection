@@ -13,6 +13,8 @@ from camo.eval.runlog import RunLog
 from camo.graph.edge_scorer import fit_and_evaluate, retest_agreement
 from camo.graph.embed import embed_texts, mock_embeddings
 from camo.graph.rewire import tau_sweep_table
+from camo.llm.prompts import PAIR_PROMPT_VERSION
+from camo.llm.score_pairs import current_pairs
 from camo.llm.score_reviews import fields_matrix
 
 TAB = ROOT / "outputs" / "tables"
@@ -39,7 +41,11 @@ def main():
     np.save(ROOT / cfg["paths"]["processed_dir"] / f"llm_fields_{tag}.npy", fields)
     print(f"review fields: {int((rf['status']=='ok').sum())}/{len(nt)} scored ok")
 
-    ps = pd.read_parquet(llm_dir / "pair_scores.parquet")
+    ps_all = pd.read_parquet(llm_dir / "pair_scores.parquet")
+    ps = current_pairs(ps_all)
+    print(f"pair judgements: {len(ps)} with prompt v{PAIR_PROMPT_VERSION} (ignoring {len(ps_all) - len(ps)} older)")
+    if ps.empty:
+        raise SystemExit(f"no pair judgements with prompt v{PAIR_PROMPT_VERSION}; run scripts/04_llm_score.py --stage pairs")
     rid_to_node = pd.Series(np.arange(g.n), index=nt["review_id"].to_numpy())
     ok = ps[(ps["status"] == "ok") & (ps["swap"] == 0)].copy()
     ok["u_node"] = rid_to_node.loc[ok["u"]].to_numpy(); ok["v_node"] = rid_to_node.loc[ok["v"]].to_numpy()
@@ -66,6 +72,14 @@ def main():
     sweep = tau_sweep_table(g.edges, scores, g.y, rcfg["rewire"]["tau_grid"])
     sweep.to_csv(TAB / f"tau_sweep_{tag}.csv", index=False)
     print(sweep.round(3).to_string(index=False))
+    # Sanity check of the edge-weight direction (labels used for this diagnostic only, never by the
+    # method): camouflage edges (cross-label) must get lower weights than same-label edges.
+    soft = sweep[sweep["tau"] == "soft"]
+    for row in soft.itertuples():
+        ok = row.mean_weight_hetero < row.mean_weight_homo
+        print(f"direction check {row.relation}: cross-label {row.mean_weight_hetero:.3f} vs same-label "
+              f"{row.mean_weight_homo:.3f} -> {'OK' if ok else 'WRONG DIRECTION: do not use these weights'}")
+    log.note(direction_ok={r.relation: bool(r.mean_weight_hetero < r.mean_weight_homo) for r in soft.itertuples()})
     log.note(retest_agreement=rt, out=str(out)); log.finish()
 
 

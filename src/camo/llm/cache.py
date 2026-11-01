@@ -8,9 +8,13 @@ import pandas as pd
 
 
 class ParquetCache:
-    def __init__(self, path: str | Path, key: list[str]):
+    def __init__(self, path: str | Path, key: list[str], defaults: dict | None = None):
+        """`defaults` fills key columns missing from an older cache file (e.g. prompt_version=1)."""
         self.path, self.key = Path(path), key
         self.df = pd.read_parquet(self.path) if self.path.exists() else pd.DataFrame(columns=key)
+        for col, val in (defaults or {}).items():
+            if col not in self.df.columns:
+                self.df[col] = val
 
     def have(self) -> set:
         return set(map(tuple, self.df[self.key].itertuples(index=False, name=None))) if len(self.df) else set()

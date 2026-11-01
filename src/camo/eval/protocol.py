@@ -50,14 +50,16 @@ def apply_rewiring(edges, weights, mode: str | None, tau: float = 0.0):
     raise ValueError(mode)
 
 
-def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke=False):
-    """Returns (protocol_name, train_idx, folds) with folds = [train, val, test_w...]."""
+def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke=False, windows=None):
+    """Returns (protocol_name, train_idx, folds) with folds = [train, val, test_w...].
+    `windows` fixes the window id per node (e.g. the adversarial run keeps the clean graph's
+    boundaries so injected nodes cannot move the training cutoff); default: equal-count windows."""
     edges, weights = apply_rewiring(g.edges, weights, mode, tau)
     if g.dates is None:
         tr, va, te = stratified_split(g.y, seed)
         f = lambda name, idx: Fold(name, idx, edges, weights)
         return "stratified", tr, [f("train", tr), f("val", va), f("test", te)]
-    w = equal_count_windows(g.dates, cfg["windows"]["n_windows"])
+    w = windows if windows is not None else equal_count_windows(g.dates, cfg["windows"]["n_windows"])
     plan = temporal_plan(w, cfg["windows"]["n_train_windows"], cfg["windows"]["n_val_windows"])
     folds = []
     tr = np.where(np.isin(w, plan["train"]))[0]

@@ -107,6 +107,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-10-30 (branch fix/review-issues): fixed review issues 1, 4-10 (pair prompt v2, strict text join, calibrated drift monitor, alarm-triggered self-training with control, injection cap + fixed windows); see docs/decisions.md D7-D10. Smoke pipeline 02-10 and 37 tests pass. The committed .mat self-training tables predate D9 and need a rerun.
 - 2026-10-30: full pipeline (scripts 01–10) runs end to end on the synthetic fixture in `--smoke --mock` mode; `.mat` baselines running; raw text requested from the dataset author (nothing text-dependent can be reported until it lands).
 - Pivot date **8 Nov**: if raw text has not arrived, switch to the graph-only track (see `docs/decisions.md`).
 - Experiment freeze **15 Nov**; 16–20 Nov report, slides, video.

@@ -20,11 +20,12 @@ def mock_review_fields(text: str) -> dict:
             "template_like": gen > 0.3}
 
 
+MOCK_NUMERIC = ["specificity", "experiential_evidence", "generic_praise", "promotional_tone", "first_person_detail"]
+
+
 def mock_pair_score(text_a: str, text_b: str, relation: str, rng: np.random.Generator) -> dict:
-    a, b = set(str(text_a).lower().split()), set(str(text_b).lower().split())
-    jac = len(a & b) / max(1, len(a | b))
-    ga = sum(w in GENERIC for w in a) / max(1, len(a)); gb = sum(w in GENERIC for w in b) / max(1, len(b))
-    fit = {"rur": 0.5 + 0.5 * jac, "rsr": 1 - 0.8 * (ga + gb) / 2 - 0.5 * max(0, jac - 0.5),
-           "rtr": 1 - 0.9 * (ga + gb) / 2 - 0.5 * max(0, jac - 0.4)}[relation]
-    fit = float(np.clip(fit + rng.normal(0, 0.05), 0, 1))
+    """Same target as prompt v2: similarity of the *kind* of evidence (1 = same kind)."""
+    fa, fb = mock_review_fields(text_a), mock_review_fields(text_b)
+    gap = np.mean([abs(fa[k] - fb[k]) for k in MOCK_NUMERIC])
+    fit = float(np.clip(1 - 2 * gap + rng.normal(0, 0.05), 0, 1))
     return {"relative_fit": fit, "consistency": fit, "reason": "mock"}

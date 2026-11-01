@@ -13,11 +13,10 @@ import pandas as pd
 from _common import ROOT, load_config, parser, processed_path, resolve_source
 
 from camo.adversarial.inject import inject_reviews
-from camo.data.features_pit import compute_pit_features
+from camo.data.features_pit import FEATURES, compute_pit_features
 from camo.data.graph_build import build_graph
 from camo.data.load_mat import load_graph
-from camo.drift.monitor import h_text_raw_and_refined, trigger
-from camo.drift.psi import psi
+from camo.drift.monitor import run_monitor
 from camo.eval.metrics import evaluate
 from camo.eval.protocol import build_folds
 from camo.eval.runlog import RunLog
@@ -26,6 +25,7 @@ from camo.graph.embed import embed_texts, mock_embeddings
 from camo.llm.mock import mock_review_fields
 from camo.llm.score_reviews import fields_matrix, row_from_result
 from camo.models.wsage import RelGraph, predict_wsage, train_wsage
+from camo.selftrain.loop import run_triggered
 
 TAB = ROOT / "outputs" / "tables"
 
@@ -34,7 +34,7 @@ def main():
     p = parser(__doc__)
     p.add_argument("--levels", default="0,0.05,0.1,0.2"); p.add_argument("--mock", action="store_true")
     p.add_argument("--llm-text", action="store_true"); p.add_argument("--tau", type=float, default=0.5)
-    p.add_argument("--recover", action="store_true", help="run the self-training challenger at the top level")
+    p.add_argument("--recover", action="store_true", help="run the alarm-triggered self-training at the top level")
     args = p.parse_args()
     cfg, rcfg, dcfg, scfg = load_config("base"), load_config("reconstruction"), load_config("drift"), load_config("selftrain")
     source = resolve_source(args.source)
@@ -57,12 +57,30 @@ def main():
     train_end = g0.dates[np.isin(w0, plan["train"])].max()
     wb = {k: (s, e, n) for k, s, e, n in window_bounds(g0.dates, w0)}
     test_windows = [wb[k] for k in plan["test"]]
-    rows, drift_rows = [], []
+    train_rids = set(nt0["review_id"].to_numpy()[np.isin(w0, plan["train"])])
+    top_level = max(float(v) for v in args.levels.split(","))
+    names = FEATURES
+    rows, drift_rows, rec_win, rec_summ = [], [], [], []
+    train_x_ref = None
     for level in [float(v) for v in args.levels.split(",")]:
         for seed in seeds:
-            aug, inj = inject_reviews(raw, train_end, test_windows, level, seed, "llm" if args.llm_text else "perturbed", llm_texts)
+            aug, inj = inject_reviews(raw, train_end, test_windows, level, seed, "llm" if args.llm_text else "perturbed",
+                                      llm_texts, max_reviews_per_product=maxr)
             feats = compute_pit_features(aug)
             g = build_graph(aug, maxr, features=feats); nt = g.node_table
+            # Windows keep the clean graph's date boundaries (issue #5), so injections cannot move the
+            # training cutoff; check the training set is exactly the clean one.
+            node_w = np.full(g.n, -1)
+            for k, (s, e, _) in wb.items():
+                node_w[(g.dates >= s) & (g.dates <= e)] = k
+            assert (node_w >= 0).all(), "a node fell outside every clean window"
+            tr_mask = np.isin(node_w, plan["train"])
+            assert set(nt["review_id"].to_numpy()[tr_mask]) == train_rids, "training set changed under injection"
+            order = np.argsort(nt["review_id"].to_numpy()[tr_mask])
+            tx = g.x[tr_mask][order]
+            if train_x_ref is None:
+                train_x_ref = tx
+            assert np.array_equal(tx, train_x_ref), "training features changed under injection"
             emb = mock_embeddings(nt["text"].tolist()) if args.mock else embed_texts(nt["text"].tolist(), rcfg["embedding_model"], None)
             # LLM fields: cached for real reviews; injected perturbed texts inherit their source's fields,
             # LLM-generated texts must be in the cache (scripts/04 on injected_texts) or are mocked
@@ -81,13 +99,9 @@ def main():
             fields, _ = fields_matrix(nt, rf_aug)
             scores = {r: scorer.predict(e[0], e[1], np.full(e.shape[1], r), emb, fields) if e.shape[1] else np.zeros(0, np.float32)
                       for r, e in g.edges.items()}
-            # injected nodes are assigned to the window whose date range contains them
-            node_w = np.full(g.n, -1)
-            for k, (s, e, _) in wb.items():
-                node_w[(g.dates >= s) & (g.dates <= e)] = k
             inj_mask = (nt["injected"].to_numpy() == 1) if "injected" in nt else np.zeros(g.n, bool)
             for graph_name, weights in [("raw_graph", None), ("refined_soft", scores)]:
-                _, train_idx, folds = build_folds(g, cfg, seed, weights, "soft" if weights else None)
+                _, train_idx, folds = build_folds(g, cfg, seed, weights, "soft" if weights else None, windows=node_w)
                 x = ((g.x - g.x[train_idx].mean(0)) / (g.x[train_idx].std(0) + 1e-6)).astype(np.float32)
                 gtr = RelGraph(g.n, folds[0].edges, folds[0].weights); gva = RelGraph(g.n, folds[1].edges, folds[1].weights)
                 model = train_wsage(x, g.y, gtr, train_idx, folds[1].eval_idx, gva, seed, epochs=30 if args.smoke else 150)
@@ -100,28 +114,30 @@ def main():
                     inj_rec = float(inj_mask[top].sum() / max(1, ninj)) if ninj else np.nan
                     rows.append({"level": level, "seed": seed, "graph": graph_name, "window": k, "n_injected": ninj,
                                  "injected_recall@10%": inj_rec, **m})
-            # label-free monitor on the raw graph with dated neighbours
-            h_raw, _ = h_text_raw_and_refined(g.edges, scores, g.n, g.dates, args.tau)
-            ref = np.isin(node_w, plan["train"])
-            flags = []
-            for k in plan["test"]:
-                cur = node_w == k
-                ps = psi(h_raw[ref], h_raw[cur], dcfg["psi_bins"])
-                flags.append(ps > dcfg["psi_threshold"])
-                drift_rows.append({"level": level, "seed": seed, "window": k, "psi_h_text": ps,
-                                   "mean_h_text": float(np.nanmean(h_raw[cur])), "n_injected": int(inj_mask[cur].sum())})
-            al = trigger(np.array(flags), dcfg["k_consecutive"])
-            for i in range(len(plan["test"])):
-                drift_rows[-len(plan["test"]) + i]["alarm"] = bool(al[i])
-            print(f"level {level} seed {seed}: injected={len(inj)} alarm windows={[k for k, a in zip(plan['test'], al) if a]}")
-        if args.recover and level == max(float(v) for v in args.levels.split(",")):
-            from camo.selftrain.loop import run_selftrain
-            rec_rows = []
-            for seed in seeds:
-                r, b = run_selftrain(g, cfg, scfg, seed, scores, {"all": scfg["variants"]["all"]}, 50 if args.smoke else 300,
-                                     20 if args.smoke else scfg["probe_labels_per_window"], ae_epochs=50 if args.smoke else 200, graph_name="refined_soft")
-                rec_rows += r
-            pd.DataFrame(rec_rows).to_csv(TAB / f"adversarial_recovery_{tag}.csv", index=False)
+            # label-free monitor (calibrated, same code as scripts/07) on the raw graph with dated neighbours
+            _, _, flags, h_raw, _ = run_monitor(g, node_w, plan["train"], dcfg, names, scores, tau=args.tau)
+            for fr in flags.itertuples():
+                if fr.window in plan["test"]:
+                    cur = node_w == fr.window
+                    drift_rows.append({"level": level, "seed": seed, "window": int(fr.window), "monitor": fr.monitor,
+                                       "psi": fr.psi_mean, "psi_thr": fr.psi_thr, "ks": fr.ks_max, "ks_thr": fr.ks_thr,
+                                       "flag": bool(fr.flag), "alarm": bool(fr.alarm),
+                                       "mean_h_text": float(np.nanmean(h_raw[cur])) if h_raw is not None else np.nan,
+                                       "n_injected": int(inj_mask[cur].sum())})
+            alarms = {int(k): bool(a) for k, a in zip(flags["window"], flags["alarm"])}
+            print(f"level {level} seed {seed}: injected={len(inj)} alarm windows={[k for k, a in alarms.items() if a]}")
+            if args.recover and level == top_level:
+                # recovery on this seed's own injected graph and scores (issue #6), triggered by its own alarms
+                wr, _, sm = run_triggered(g, cfg, scfg, seed, scores, {"all": scfg["variants"]["all"]},
+                                          50 if args.smoke else 300, 20 if args.smoke else scfg["probe_labels_per_window"],
+                                          alarms, node_w, ae_epochs=50 if args.smoke else 200, graph_name="refined_soft")
+                for r in wr:
+                    r["level"] = level
+                rec_win += wr; rec_summ += sm
+    if rec_win:
+        pd.DataFrame(rec_win).to_csv(TAB / f"adversarial_recovery_{tag}.csv", index=False)
+        pd.DataFrame(rec_summ).to_csv(TAB / f"adversarial_recovery_summary_{tag}.csv", index=False)
+        print(pd.DataFrame(rec_summ).round(4).to_string(index=False))
     df = pd.DataFrame(rows); TAB.mkdir(parents=True, exist_ok=True)
     df.to_csv(TAB / f"adversarial_{tag}.csv", index=False)
     pd.DataFrame(drift_rows).to_csv(TAB / f"adversarial_drift_{tag}.csv", index=False)

@@ -7,7 +7,16 @@ import numpy as np
 import pandas as pd
 
 from camo.llm.batch_runner import make_request
-from camo.llm.prompts import PAIR_SCHEMA, pair_system, pair_user_message
+from camo.llm.prompts import PAIR_PROMPT_VERSION, PAIR_SCHEMA, pair_system, pair_user_message
+
+PAIR_CACHE_KEY = ["relation", "u", "v", "swap", "prompt_version"]
+PAIR_CACHE_DEFAULTS = {"prompt_version": 1}   # rows written before versioning used prompt v1
+
+
+def current_pairs(cache_df: pd.DataFrame) -> pd.DataFrame:
+    """Only judgements made with the current prompt; v1 scored the wrong target (decisions D7)."""
+    v = cache_df["prompt_version"] if "prompt_version" in cache_df else pd.Series(1, index=cache_df.index)
+    return cache_df[v == PAIR_PROMPT_VERSION]
 
 
 def sample_pairs(edges: dict[str, np.ndarray], eligible: np.ndarray, emb: np.ndarray,
@@ -51,6 +60,7 @@ def build_pair_requests(pairs: pd.DataFrame, node_table: pd.DataFrame, model: st
 def row_from_result(custom_id: str, data: dict | None, status: str, model: str) -> dict:
     _, rel, u, v, swap = custom_id.split("-")
     d = data or {}
-    return {"relation": rel, "u": int(u), "v": int(v), "swap": int(swap), "status": status, "model": model,
+    return {"relation": rel, "u": int(u), "v": int(v), "swap": int(swap), "prompt_version": PAIR_PROMPT_VERSION,
+            "status": status, "model": model,
             "relative_fit": d.get("relative_fit", np.nan), "consistency": d.get("consistency", np.nan),
             "reason": d.get("reason", "")}

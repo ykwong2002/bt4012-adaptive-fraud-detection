@@ -25,6 +25,12 @@ data/raw/yelpchi_raw/metadata        # one line per review: user_id  product_id 
 data/raw/yelpchi_raw/reviewContent   # one line per review: user_id  product_id  date  review_text
 ```
 
+The loader splits each reviewContent line on its first three tabs only (review text may contain tabs),
+matches text to metadata row by row when both files list the same (user, product, date) in the same
+order, otherwise by (user, product, date, k-th occurrence), and **raises** if any line is malformed or any
+review is left without text. The join statistics are printed by `scripts/02_build_graph.py` and saved in
+its `run.json`.
+
 `label` is `-1` (filtered / fake) or `1` (recommended / genuine) in the Rayana release; the loader maps
 filtered → 1, genuine → 0 so that **1 = fraud** everywhere in this repo. If the shipped files use a
 different layout, fix `src/camo/data/load_raw.py` and this README in the same PR.

@@ -42,27 +42,34 @@ def review_user_message(text: str, max_chars: int = 3000) -> str:
     return f"<review>\n{t}\n</review>\nReturn the fields."
 
 
-# ---- pairwise relative fit, one prompt per relation (decisions D4) ----
+# ---- pairwise relative fit, one prompt per relation (decisions D4, D7) ----
+# relative_fit is the edge weight target. It measures whether the two texts carry the SAME KIND of
+# evidence, so that edges joining a generic/promotional review to a detailed first-hand one (the
+# camouflage edges) score low, while edges between two reviews of the same kind score high. Two
+# templated reviews posted together are usually both fraudulent, so their edge is one we want to KEEP:
+# the prompt must never lower the score for similarity, templating or timing (that was v1's bug).
+PAIR_PROMPT_VERSION = 2
+
 PAIR_SYSTEM_BASE = (
-    "You compare two online reviews of restaurants/hotels and score how well the *text* supports the "
-    "stated relationship between them. Output relative_fit in [0, 1]: 1 = the two texts are fully "
-    "consistent with the relationship being an ordinary, independent one; 0 = the texts give no "
-    "support or contradict it. Also output consistency in [0, 1] as defined for the relationship, "
-    "and a reason of at most 20 words. Never judge whether either review is fake."
+    "You compare two online reviews of restaurants/hotels that the platform links to each other, and "
+    "score how similar they are in the KIND of evidence their text contains. Consider specificity "
+    "(concrete, checkable details), first-hand experience (a narrated visit), generic praise "
+    "(interchangeable superlatives), promotional tone, and writing style. Output relative_fit in [0, 1]: "
+    "1 = the same kind of review (both detailed first-hand accounts, or both generic, promotional or "
+    "templated); 0 = opposite kinds (one a detailed first-hand account, the other generic or "
+    "promotional). Do not lower relative_fit because the two texts are similar to each other, share "
+    "phrasing, follow a template or were posted close together: being the same kind is exactly what "
+    "a high score means. Also output consistency in [0, 1] as defined for the relationship, and a "
+    "reason of at most 20 words. Never judge whether either review is fake."
 )
 
 PAIR_RELATION_DEFS = {
     "rur": "Relationship: SAME AUTHOR. consistency = how plausibly one person wrote both (voice, "
-           "vocabulary, level of detail, habits); high relative_fit means they read like the same "
-           "ordinary reviewer across two visits.",
-    "rsr": "Relationship: SAME VENUE, SAME STAR RATING. consistency = how plausibly these are two "
-           "independent customers describing the same place at the same satisfaction level (shared "
-           "concrete venue facts, differing personal details); low relative_fit if they are near-"
-           "duplicates, templated, or describe incompatible venues.",
-    "rtr": "Relationship: SAME VENUE, SAME MONTH. consistency = how plausibly these are independent "
-           "visitors in the same month (different experiences, compatible venue facts); low "
-           "relative_fit if they look like a coordinated burst (shared phrasing, same generic praise, "
-           "same structure).",
+           "vocabulary, level of detail, habits).",
+    "rsr": "Relationship: SAME VENUE, SAME STAR RATING. consistency = how compatible the venue facts "
+           "in the two texts are (menu, rooms, location, service).",
+    "rtr": "Relationship: SAME VENUE, SAME MONTH. consistency = how compatible the venue facts in the "
+           "two texts are (menu, rooms, location, service).",
 }
 
 PAIR_SCHEMA = {

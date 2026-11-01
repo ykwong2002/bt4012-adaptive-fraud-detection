@@ -26,9 +26,14 @@ def perturb_text(text: str, rng: np.random.Generator, frac: float = 0.15) -> str
 
 
 def inject_reviews(raw: pd.DataFrame, train_end, windows: list[tuple], level: float, seed: int,
-                   mode: str = "perturbed", llm_texts: pd.DataFrame | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+                   mode: str = "perturbed", llm_texts: pd.DataFrame | None = None,
+                   max_reviews_per_product: int | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
     """windows: list of (start_date, end_date, n_reviews) for the test windows. level = injected
-    reviews as a fraction of each window's size. Returns (augmented raw, injected-rows info)."""
+    reviews as a fraction of each window's size. Returns (augmented raw, injected-rows info).
+
+    Products are drawn in proportion to their size but only while they stay at or under
+    `max_reviews_per_product` (review issue #5): pushing a product over the graph builder's filter
+    would delete the whole product, training-period reviews included."""
     rng = np.random.default_rng(seed)
     train = raw[raw["date"] <= train_end]
     fraud_users = set(train.loc[train["label"] == 1, "user_id"])
@@ -36,6 +41,8 @@ def inject_reviews(raw: pd.DataFrame, train_end, windows: list[tuple], level: fl
     legit_texts = train.loc[train["label"] == 0, "text"].dropna().astype(str).to_numpy()
     legit_src_ids = train.loc[train["label"] == 0, "review_id"].to_numpy()[train.loc[train["label"] == 0, "text"].notna().to_numpy()]
     prods, pcount = np.unique(raw["product_id"], return_counts=True)
+    room = (np.full(len(prods), np.iinfo(np.int64).max) if max_reviews_per_product is None
+            else (max_reviews_per_product - pcount).clip(min=0)).astype(np.int64)
     next_id = int(raw["review_id"].max()) + 1
     rows = []
     llm_iter = iter(llm_texts["text"].tolist()) if (mode == "llm" and llm_texts is not None) else None
@@ -48,8 +55,13 @@ def inject_reviews(raw: pd.DataFrame, train_end, windows: list[tuple], level: fl
                 text = next(llm_iter, None) or perturb_text(legit_texts[j], rng)
             else:
                 text = perturb_text(legit_texts[j], rng)
+            avail = room > 0
+            if not avail.any():
+                raise ValueError("no product has room under max_reviews_per_product for more injections")
+            pw = np.where(avail, pcount, 0).astype(float)
+            pi = rng.choice(len(prods), p=pw / pw.sum()); room[pi] -= 1
             rows.append({"user_id": legit_users[rng.integers(len(legit_users))],
-                         "product_id": prods[rng.choice(len(prods), p=pcount / pcount.sum())],
+                         "product_id": prods[pi],
                          "rating": float(rng.choice([4.0, 5.0, 5.0])),
                          "date": pd.Timestamp(start) + pd.Timedelta(days=int(rng.integers(0, max(1, days + 1)))),
                          "label": 1, "review_id": next_id, "text": text, "injected": 1,
