@@ -8,6 +8,14 @@ llm:
 scorer:
   kind: ridge          # ridge | mlp
   alpha: 1.0
+feature_scorer:        # graph-only track (scripts/05b)
+  hidden: 64
+  emb: 32
+  lr: 0.003
+  batch: 4096
+  steps: 3000
+  eval_every: 100
+  patience: 8
 rewire:
   mode: soft           # soft | hard
   tau_grid: [0.2, 0.3, 0.4, 0.5, 0.6]

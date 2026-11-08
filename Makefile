@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil train drift selftrain adversarial figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -27,6 +27,9 @@ llm-score:
 
 distil:
 	$(PY) scripts/05_distil_edges.py $(SMOKEFLAG)
+
+feature-edges:
+	$(PY) scripts/05b_feature_edges.py --scorer feature $(SMOKEFLAG)
 
 train:
 	$(PY) scripts/06_train.py $(SMOKEFLAG)

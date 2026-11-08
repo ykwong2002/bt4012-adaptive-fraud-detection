@@ -5,6 +5,11 @@ import numpy as np
 import pandas as pd
 
 
+def oracle_scores(edges: dict[str, np.ndarray], y: np.ndarray) -> dict[str, np.ndarray]:
+    """Upper bound for any rewiring: 1 for same-label edges, 0 for cross-label. Diagnostic only."""
+    return {r: (y[e[0]] == y[e[1]]).astype(np.float32) for r, e in edges.items()}
+
+
 def tau_sweep_table(edges: dict[str, np.ndarray], scores: dict[str, np.ndarray], y: np.ndarray,
                     taus: list[float]) -> pd.DataFrame:
     rows = []
