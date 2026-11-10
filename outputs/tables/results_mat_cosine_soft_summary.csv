@@ -1,0 +1,5 @@
+model,graph,protocol,fold,auc_pr,auroc,recall@5%,recall@10%,n_seeds
+catboost,refined_soft,stratified,test,0.8889 ± 0.0024,0.9696 ± 0.0015,0.3388 ± 0.0014,0.6311 ± 0.0035,5
+catboost,refined_soft,stratified,val,0.8871 ± 0.011,0.9682 ± 0.0036,0.3381 ± 0.003,0.6345 ± 0.01,5
+wsage,refined_soft,stratified,test,0.7958 ± 0.0076,0.9407 ± 0.0033,0.3254 ± 0.0013,0.568 ± 0.0103,5
+wsage,refined_soft,stratified,val,0.7929 ± 0.012,0.9391 ± 0.0038,0.3258 ± 0.0019,0.5672 ± 0.0108,5

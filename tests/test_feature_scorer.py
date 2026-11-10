@@ -1,7 +1,7 @@
 import numpy as np
 
 from camo.graph.feature_scorer import FeatureEdgeScorer, cosine_scores
-from camo.graph.rewire import oracle_scores
+from camo.graph.rewire import edge_label_auc, noisy_oracle_scores, oracle_scores
 
 
 def _two_cluster_graph(seed=0, n=400, d=8, n_cross=60):
@@ -37,3 +37,12 @@ def test_oracle_scores():
     y = np.array([0, 0, 1, 1])
     e = {"rsr": np.array([[0, 0, 2], [1, 2, 3]])}
     assert oracle_scores(e, y)["rsr"].tolist() == [1.0, 0.0, 1.0]
+
+
+def test_noisy_oracle_hits_target_auc():
+    rng = np.random.default_rng(0)
+    y = rng.integers(0, 2, 2000)
+    e = {"rsr": np.sort(rng.integers(0, 2000, size=(2, 40000)), axis=0)}
+    for target in (0.6, 0.8):
+        s = noisy_oracle_scores(e, y, target, seed=1)
+        assert abs(edge_label_auc(e, s, y)["rsr"] - target) < 0.01

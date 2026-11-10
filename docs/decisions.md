@@ -2,6 +2,14 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D12 2026-11-10 Scorer-quality curve with a noisy oracle; compare scorers by rank, not raw score
+The perfect oracle reaches AUC-PR ~1.0 because pruning every cross-label edge encodes the labels in
+the graph, so it bounds nothing useful. Instead we simulate scorers of known quality (edge AUC for
+same- vs cross-label edges, binormal noise) and retrain at each level, then place the real scorers on
+the same axis. All scorers use `softrank` weights: the feature scorer's raw outputs sit in a narrow
+band, so plain soft weights would hide its ordering. Limitation: simulated errors are random, real
+ones are not, so the curve is optimistic.
+
 ## D11 2026-11-09 Graph-only edge scorer: MLP encoder link model, not a GNN autoencoder
 Implements the pivot's "feature-consistency model" (scripts/05b). Each node is encoded from its own
 32 features only; a per-relation bilinear decoder is trained to separate observed edges from random

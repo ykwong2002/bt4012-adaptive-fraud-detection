@@ -57,6 +57,55 @@ def headline(tag):
     fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
+SCORER_COLORS = {"feature": "#1f77b4", "cosine": "#ff7f0e"}
+SCORER_LABEL_OFFSET = {"feature": (-8, 8, "right"), "cosine": (8, -12, "left")}
+MODEL_NAMES = {"wsage": "WeightedSAGE", "catboost": "CatBoost", "care": "CARE-static", "ae": "Autoencoder"}
+
+
+def scorer_curve(tag):
+    """Model AUC-PR against edge-scorer quality: the noisy-oracle sweep with the real scorers placed on it.
+    Also writes the plotted numbers to scorer_curve_<tag>.csv."""
+    files = sorted(TAB.glob(f"results_{tag}_*_softrank.csv"))
+    base = read(f"results_{tag}_raw_graph.csv")
+    if not files or base is None:
+        return
+    df = pd.concat(pd.read_csv(f) for f in files)
+    df = df[df["fold"] == "test"].copy()
+    df["scorer"] = df["weights"].str.removeprefix(f"{tag}_")
+    auc = {}
+    for s in df["scorer"].unique():
+        h = read(f"homophily_weighted_{tag}_{s}.csv")
+        if h is not None:
+            auc[s] = float(np.average(h["edge_auc_same_vs_cross"], weights=h["edges"]))
+    df["edge_auc"] = df["scorer"].map(auc)
+    t = df.groupby(["model", "scorer", "edge_auc"])["auc_pr"].agg(["mean", "std", "count"]).reset_index()
+    base = base[(base["fold"] == "test") & base["seed"].isin(df["seed"].unique())]
+    raw = base.groupby("model")["auc_pr"].mean()
+    t["raw_graph_auc_pr"] = t["model"].map(raw)
+    t.to_csv(TAB / f"scorer_curve_{tag}.csv", index=False)
+
+    models = sorted(t["model"].unique())
+    fig, axes = plt.subplots(1, len(models), figsize=(4.4 * len(models), 3.6), sharey=False)
+    for ax, m in zip(np.atleast_1d(axes), models):
+        sub = t[t["model"] == m]
+        noisy = sub[sub["scorer"].str.startswith("noisy")].sort_values("edge_auc")
+        ax.errorbar(noisy["edge_auc"], noisy["mean"], yerr=noisy["std"].fillna(0), color="k", lw=2,
+                    marker="o", ms=6, capsize=3, label="noisy oracle (simulated)")
+        for row in sub[~sub["scorer"].str.startswith("noisy")].itertuples():
+            ax.errorbar(row.edge_auc, row.mean, yerr=0 if np.isnan(row.std) else row.std, ls="none", marker="s", ms=8,
+                        capsize=3, color=SCORER_COLORS.get(row.scorer, "grey"), label=f"{row.scorer} scorer")
+            dx, dy, ha = SCORER_LABEL_OFFSET.get(row.scorer, (8, -12, "left"))
+            ax.annotate(row.scorer, (row.edge_auc, row.mean), xytext=(dx, dy), textcoords="offset points", fontsize=8, ha=ha)
+        ax.axhline(raw.get(m, np.nan), color="grey", ls="--", lw=1, label="raw graph")
+        if m != "catboost" and "catboost" in raw:
+            ax.axhline(raw["catboost"], color="grey", ls=":", lw=1, label="CatBoost, raw graph")
+        ax.grid(alpha=0.3, lw=0.5)
+        ax.set_title(MODEL_NAMES.get(m, m)); ax.set_xlabel("edge-scorer AUC, same- vs cross-label edges"); ax.set_ylabel("AUC-PR (test)")
+        ax.legend(fontsize=7, loc="upper left")
+    fig.suptitle(f"How good must an edge scorer be? ({tag}, softrank weights, mean ± std over seeds)", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_scorer_curve_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+
+
 def distil(tag):
     m = read(f"distil_metrics_{tag}.csv")
     if m is None:
@@ -160,10 +209,10 @@ def adversarial(tag):
 def main():
     p = argparse.ArgumentParser(); p.add_argument("--tag", default="raw"); a = p.parse_args()
     FIG.mkdir(parents=True, exist_ok=True)
-    for fn in (headline, distil, tau_sweep, drift, selftrain, adversarial):
+    for fn in (headline, scorer_curve, distil, tau_sweep, drift, selftrain, adversarial):
         fn(a.tag)
     if a.tag == "raw":
-        headline("mat"); selftrain("mat")
+        headline("mat"); selftrain("mat"); scorer_curve("mat")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 
