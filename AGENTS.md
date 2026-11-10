@@ -107,6 +107,8 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-11-11 (branch feat/edge-scorer): graph-only track started (D11, D12). The label-free feature scorer is near chance on R-T-R / R-S-R (edge AUC ~0.51), so reweighting by it gives no gain. Noisy-oracle curve (.mat, stratified, 2 seeds): repair pays off from edge AUC ~0.7 and WeightedSAGE matches raw-graph CatBoost at ~0.8, so that is the bar for the text scorer. Open: pivot decision, self-training rerun.
+
 - 2026-10-30 (branch fix/review-issues): fixed review issues 1, 4-10 (pair prompt v2, strict text join, calibrated drift monitor, alarm-triggered self-training with control, injection cap + fixed windows); see docs/decisions.md D7-D10. Smoke pipeline 02-10 and 37 tests pass. The committed .mat self-training tables predate D9 and need a rerun.
 - 2026-10-30: full pipeline (scripts 01–10) runs end to end on the synthetic fixture in `--smoke --mock` mode; `.mat` baselines running; raw text requested from the dataset author (nothing text-dependent can be reported until it lands).
 - Pivot date **8 Nov**: if raw text has not arrived, switch to the graph-only track (see `docs/decisions.md`).
