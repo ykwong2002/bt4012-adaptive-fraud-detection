@@ -66,12 +66,12 @@ per-window AUC-PR, plus the per-relation homophily diagnostic. Everything else s
 src/camo/data       load_mat.py load_raw.py graph_build.py features_pit.py
 src/camo/llm        prompts.py score_reviews.py score_pairs.py cache.py
 src/camo/graph      homophily.py edge_scorer.py rewire.py
-src/camo/models     wsage.py care_static.py catboost_model.py autoencoder.py
+src/camo/models     wsage.py care_static.py catboost_model.py autoencoder.py runner.py
 src/camo/drift      psi.py ks.py monitor.py
 src/camo/selftrain  pseudo_labels.py bias_audit.py challenger.py
-src/camo/adversarial inject.py
-src/camo/eval       splits.py metrics.py runlog.py
-scripts/            01_download … 10_figures (numbered, idempotent)
+src/camo/adversarial inject.py graph_inject.py
+src/camo/eval       splits.py protocol.py waves.py metrics.py runlog.py
+scripts/            01_download … 10_figures (numbered, idempotent); 09b = graph-only adversarial
 configs/            base.yaml reconstruction.yaml drift.yaml selftrain.yaml
 tests/              pytest; fixtures/raw_mini is a synthetic raw-format sample
 docs/               proposal, guidelines, decisions.md, data_sources.md, acknowledgements.md, report_outline.md
@@ -107,6 +107,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-11-10 (branch feat/graph-waves): graph-only protocol (D12). `06_train.py --waves` and `09b_graph_adversarial.py` run the headline and adversarial experiments on `.mat` with random arrival waves and graph-level camouflage injection (`make graph-adversarial`). Not yet run on the full `.mat`.
 - 2026-10-30 (branch fix/review-issues): fixed review issues 1, 4-10 (pair prompt v2, strict text join, calibrated drift monitor, alarm-triggered self-training with control, injection cap + fixed windows); see docs/decisions.md D7-D10. Smoke pipeline 02-10 and 37 tests pass. The committed .mat self-training tables predate D9 and need a rerun.
 - 2026-10-30: full pipeline (scripts 01–10) runs end to end on the synthetic fixture in `--smoke --mock` mode; `.mat` baselines running; raw text requested from the dataset author (nothing text-dependent can be reported until it lands).
 - Pivot date **8 Nov**: if raw text has not arrived, switch to the graph-only track (see `docs/decisions.md`).

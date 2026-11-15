@@ -2,6 +2,25 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D12 2026-11-10 Graph-only protocol: random arrival waves plus graph-level camouflage injection
+The .mat graph has no dates, so `build_folds` fell back to a stratified split, which we may not report,
+and script 09 needs the raw metadata to inject reviews. On the graph-only track each node instead gets
+a random arrival wave (stratified by label, re-drawn per seed; `camo.eval.waves`) encoded as a
+pseudo-date. The existing temporal code then runs unchanged (protocol name "waves"): train on waves
+0-2 with later nodes and edges masked, tune on wave 3, score each test wave on the graph as it stands at
+its end. Clean waves are i.i.d., so this is a null-drift baseline. Drift comes from
+`camo.adversarial.graph_inject`: camouflaged fraud nodes (a training fraud node's features plus noise
+and degrees) are appended to the test waves, linked to a hijacked legitimate user's reviews (R-U-R)
+and to legitimate slices of one product block (R-S-R, R-T-R), only to nodes that have already arrived.
+Script 09b asserts the training nodes and training graph are identical at every level and reports per
+wave AUC-PR (all nodes and clean nodes) and injected-node recall@10%. AUC-PR on all nodes rises with
+the injected share of fraud, so across levels only clean-node AUC-PR, AUROC and injected recall are
+compared.
+Rejected: keeping the stratified split (not reportable), and injecting edges without nodes (no
+injected fraud to detect). Limitations, stated in the report: the arrival order is synthetic, so this
+measures robustness to camouflage, not real temporal drift; .mat features are full-data aggregates;
+injected nodes are not linked to each other (no campaign structure).
+
 ## D10 2026-10-30 Adversarial runs keep the clean graph's windows and respect the product cap
 Injected reviews only go to products with room under the 800-review filter (otherwise the filter
 deletes the whole product, training reviews included), and windows reuse the clean graph's date

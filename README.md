@@ -42,6 +42,7 @@ Raw review text is obtained by email from the dataset author; see `data/README.m
 | drift monitors | `uv run python scripts/07_drift.py` | `outputs/tables/drift_*.csv` |
 | self-training + bias audit | `uv run python scripts/08_selftrain.py` | `outputs/tables/selftrain_*.csv` |
 | adversarial injection | `uv run python scripts/09_adversarial.py` | `outputs/tables/adversarial_*.csv` |
+| graph-only track on `.mat` (D12): arrival waves + camouflage injection | `make graph-adversarial` | `outputs/tables/results_mat_waves_*.csv`, `graph_adversarial_*_mat.csv` |
 | all report figures | `uv run python scripts/10_figures.py` | `outputs/figures/` |
 
 `make all SMOKE=1` runs every step on a 2k-node subsample (minutes on a laptop). Every script writes

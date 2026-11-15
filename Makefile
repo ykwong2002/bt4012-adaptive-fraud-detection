@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil train drift selftrain adversarial figures all
+.PHONY: setup test lint data eda llm-score distil train drift selftrain adversarial graph-adversarial figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -39,6 +39,10 @@ selftrain:
 
 adversarial:
 	$(PY) scripts/09_adversarial.py $(SMOKEFLAG)
+
+graph-adversarial:                 # graph-only track (D12): arrival waves + node injection, runs on .mat
+	$(PY) scripts/06_train.py --source mat --waves $(SMOKEFLAG)
+	$(PY) scripts/09b_graph_adversarial.py --source mat $(SMOKEFLAG)
 
 figures:
 	$(PY) scripts/10_figures.py

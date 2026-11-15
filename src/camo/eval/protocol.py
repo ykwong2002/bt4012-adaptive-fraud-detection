@@ -75,4 +75,5 @@ def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke
         cut = g.dates[te].max()
         e, ww = _mask(edges, weights, g.dates, cut)
         folds.append(Fold(f"test_w{k}", te, e, ww, cut))
-    return "temporal", tr, folds
+    # "waves": synthetic arrival order on an undated graph (camo.eval.waves, decisions D12)
+    return g.meta.get("protocol", "temporal"), tr, folds

@@ -143,18 +143,18 @@ def selftrain(tag):
         fig.tight_layout(); fig.savefig(FIG / f"fig_selftrain_{tag}_{gname}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
-def adversarial(tag):
-    s = read(f"adversarial_summary_{tag}.csv")
+def adversarial(tag, prefix="adversarial", by="graph"):
+    s = read(f"{prefix}_summary_{tag}.csv")
     if s is None:
         return
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.2))
-    for gname, sub in s.groupby("graph"):
+    for gname, sub in s.groupby(by):
         axes[0].plot(sub["level"], sub["auc_pr"], marker="o", label=gname)
         axes[1].plot(sub["level"], sub["injected_recall"], marker="o", label=gname)
     axes[0].set_title("AUC-PR vs injection volume"); axes[1].set_title("injected-node recall@10%")
     for ax in axes:
         ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(FIG / f"fig_adversarial_{tag}.png", dpi=150); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150); plt.close(fig)
 
 
 def main():
@@ -162,8 +162,9 @@ def main():
     FIG.mkdir(parents=True, exist_ok=True)
     for fn in (headline, distil, tau_sweep, drift, selftrain, adversarial):
         fn(a.tag)
+    adversarial(a.tag, "graph_adversarial", "model")       # graph-only track (D12), any source
     if a.tag == "raw":
-        headline("mat"); selftrain("mat")
+        headline("mat"); headline("mat_waves"); selftrain("mat"); adversarial("mat", "graph_adversarial", "model")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 
