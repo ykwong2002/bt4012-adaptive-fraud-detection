@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -68,3 +68,8 @@ graph-scorers:
 rur-scorer:
 	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer rur_profile --waves-seed $$s; done
 	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_rur_profile_w{seed}.npz' --tag mat_waves_rur_profile_softrank
+
+# end-to-end adaptive loop on the graph-only track (D16): monitor sensitivity at 5/10 %, full loop at 20 %
+graph-loop:
+	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
+	$(PY) scripts/11_graph_loop.py --source mat --level 0.2

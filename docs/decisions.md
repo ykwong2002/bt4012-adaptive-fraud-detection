@@ -2,6 +2,29 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D16 2026-11-15 End-to-end adaptive loop on the graph-only track
+`scripts/11_graph_loop.py` runs monitor -> alarm -> label-scarce retraining -> promotion on .mat under
+arrival waves (D13), in a clean scenario (every alarm is false) and an attack scenario (D13
+camouflage injection into every test wave). Monitor: the calibrated D8 monitor on the node features
+and on h_text_raw, each node's mean cosine consistency (training-standardised features; the
+label-free scorer with the best fraud-centred quality, D15) with neighbours that arrived in the
+*same* wave. With all earlier neighbours, later nodes average over more of them, h narrows wave by
+wave and the monitor alarmed on graph growth (smoke: 60 % of clean waves flagged); same-wave
+neighbours give every wave the same expected neighbour count. Alarms drive run_triggered (D9), all
+five bias-audit variants, raw graph.
+Results (3 seeds): clean, 0 of 15 monitored waves flagged. Attack at 20 % per wave: 11 of 12
+attacked waves flagged, alarm at wave 5 (one wave after the attack starts); at 10 % 2 of 12 flagged
+and no alarm, at 5 % none: the monitor's sensitivity floor, reported as such. After the first retrain
+(waves 6-7): incumbent 0.862, no-pseudo-label control 0.902, oracle 0.973; deployed per_class 0.935,
+prior_match 0.929, all 0.918, balanced_loss 0.911, naive 0.910. Bias audit (prof. Q2): naive
+pseudo-labels end at 1.9 % positives and balanced_loss at 6.0 % against a 14.5 % prior, and both are
+flagged as collapse in every seed; per_class (21 %), prior_match and all (14.5 %) do not collapse, and
+the non-collapsing variants give the largest gains over the control (per_class +0.033, naive +0.008).
+Under attack the true pool prior rises to 25 %; the EM label-shift estimate misses it (0.09-0.15), so
+prior matching to the training prior under-labels positives. Limitations: AUC-PR includes the
+injected nodes (comparable within a scenario only); injected nodes are fraud-feature copies, an easier
+target than natural camouflage; 3 seeds.
+
 ## D15 2026-11-15 R-U-R user-profile scorer, and why global edge AUC is the wrong yardstick
 Idea: R-U-R is the one relation camouflage does not break (93 % fraud homophily), so describe each
 review by its user profile (mean of its own and its R-U-R neighbours' quantile-normalised features)

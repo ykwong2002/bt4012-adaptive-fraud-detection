@@ -107,6 +107,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-11-15 (feat/graph-waves) end-to-end loop on .mat (D16, `scripts/11_graph_loop.py`, `make graph-loop`): 0 false alarms on clean waves; 20 % injection alarmed one wave late; recovery 0.862 incumbent -> 0.935 per_class (control 0.902, oracle 0.973); naive and balanced_loss collapse, per_class / prior_match do not. Monitor misses 5-10 % injection.
 - 2026-11-15 (feat/graph-waves) R-U-R profile scorer (D15): global edge AUC 0.69 but chance on edges touching fraud, so no gain (WeightedSAGE +0.010, CatBoost -0.012). Report fraud-centred AUC (`05c_edge_diagnostics.py`). Scorer search stopped; next: end-to-end loop on .mat.
 - 2026-11-15 (feat/graph-waves) .mat results under waves (D13, D14), test AUC-PR: CatBoost 0.850, WeightedSAGE 0.698, CARE-static 0.683, AE 0.210 (5 seeds). Scorer curve (3 seeds): repair pays from edge AUC ~0.6-0.7; WeightedSAGE needs ~0.85 to match raw CatBoost. Feature scorer (edge AUC 0.52) gives +0.011 for WeightedSAGE, +0.005 for CatBoost. `make graph-scorers`.
 - 2026-11-15 (branch feat/graph-waves): merged feat/edge-scorer; degree features rescaled by visible nodes (D14). `YelpChi.mat` downloaded (hash checked). Raw text is no longer obtainable: the project runs on the graph-only track.

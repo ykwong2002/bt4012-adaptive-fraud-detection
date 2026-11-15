@@ -217,6 +217,36 @@ def adversarial(tag, prefix="adversarial", by="graph"):
     fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150); plt.close(fig)
 
 
+def graph_loop(tag):
+    """End-to-end loop (D16): monitor statistic vs its threshold per wave (clean vs attack), and AUC-PR
+    per wave of the deployed model vs incumbent, no-pseudo-label control and all-labels oracle."""
+    mon, wins = read(f"graph_loop_monitor_{tag}.csv"), read(f"graph_loop_windows_{tag}.csv")
+    if mon is None or wins is None or "deployed_ap" not in wins:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+    h = mon[mon["signal"] == "h_text_raw"]
+    for scen, sub in h.groupby("scenario"):
+        s = sub.groupby("window")[["ks_max", "ks_thr"]].mean()
+        axes[0].plot(s.index, s["ks_max"], marker="o", label=f"KS, {scen}")
+    axes[0].plot(s.index, s["ks_thr"], "k:", lw=1, label="calibrated threshold")
+    axes[0].set_title("monitor: neighbourhood consistency"); axes[0].set_xlabel("wave"); axes[0].legend(fontsize=7)
+    att = wins[wins["scenario"] == "attack"]
+    for ax, v in zip(axes[1:], ["naive", "per_class"]):        # collapses vs best (bias audit, prof. Q2)
+        sub = att[att["variant"] == v]
+        if sub.empty:
+            continue
+        s = sub.groupby("window")[["deployed_ap", "incumbent_ap", "control_ap", "upper_ap"]].mean()
+        ax.plot(s.index, s["deployed_ap"], marker="o", lw=2, label=f"deployed ({v})")
+        ax.plot(s.index, s["incumbent_ap"], "k--", lw=1, label="incumbent")
+        ax.plot(s.index, s["control_ap"], "k-.", lw=1, label="control (no pseudo-labels)")
+        ax.plot(s.index, s["upper_ap"], "k:", lw=1, label="all labels (oracle)")
+        for wdw in sub.loc[sub["alarm"].astype(bool), "window"].unique():
+            ax.axvline(wdw, color="k", alpha=0.08, lw=8)
+        ax.set_title(f"attack: AUC-PR per wave, variant {v}"); ax.set_xlabel("wave (shaded = alarm)"); ax.legend(fontsize=7)
+    fig.suptitle(f"Graph-only adaptive loop ({tag})", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_graph_loop_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+
+
 def main():
     p = argparse.ArgumentParser(); p.add_argument("--tag", default="raw"); a = p.parse_args()
     FIG.mkdir(parents=True, exist_ok=True)
@@ -226,6 +256,7 @@ def main():
     if a.tag == "raw":
         headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves")
         adversarial("mat", "graph_adversarial", "model")
+        graph_loop("mat_lvl0.2")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 
