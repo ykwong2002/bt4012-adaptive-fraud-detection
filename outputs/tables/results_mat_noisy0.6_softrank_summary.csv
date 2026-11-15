@@ -1,0 +1,5 @@
+model,graph,weights,protocol,fold,auc_pr,auroc,recall@5%,recall@10%,n_seeds
+catboost,refined_softrank,mat_noisy0.6,stratified,test,0.9014 ± 0.0053,0.976 ± 0.0022,0.3376 ± 0.0011,0.6351 ± 0.0016,2
+catboost,refined_softrank,mat_noisy0.6,stratified,val,0.9025 ± 0.0042,0.9745 ± 0.0023,0.3404 ± 0.0005,0.6416 ± 0.0016,2
+wsage,refined_softrank,mat_noisy0.6,stratified,test,0.8019 ± 0.0014,0.9443 ± 0.0007,0.3282 ± 0.0037,0.573 ± 0.0048,2
+wsage,refined_softrank,mat_noisy0.6,stratified,val,0.7994 ± 0.0027,0.9397 ± 0.0027,0.33 ± 0.0016,0.5685 ± 0.0,2

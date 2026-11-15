@@ -1,4 +1,4 @@
-"""Graph-only track (decisions D12): arrival waves and graph-level camouflage injection."""
+"""Graph-only track (decisions D13): arrival waves and graph-level camouflage injection."""
 import numpy as np
 
 from camo.adversarial.graph_inject import inject_camouflage

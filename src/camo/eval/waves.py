@@ -1,4 +1,4 @@
-"""Synthetic arrival waves for graphs without dates (the graph-only track, decisions D12).
+"""Synthetic arrival waves for graphs without dates (the graph-only track, decisions D13).
 
 The public .mat graph has no timestamps, so the temporal protocol cannot run on it directly. We give
 every node a random *arrival wave* (stratified by label, re-drawn per seed) and encode the wave as a

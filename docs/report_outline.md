@@ -11,7 +11,7 @@
 | 3.4 Drift | PSI/KS effect sizes on features, LLM fields, raw-graph text-homophily with dated neighbours; thresholds calibrated across training windows (D8); trigger rule; latency | `07_drift.py` | `drift_monitor_raw.csv`, `drift_thresholds_raw.csv`, `fig_drift_raw.png` |
 | 3.5 Label-scarce response | alarm-triggered, time-respecting retraining (D9); pseudo-labels (community propensity on R-U-R ∪ weighted R-S-R, AE rank), self-training variants, **bias audit** (prof. Q2), promotion rule; deployed vs incumbent vs no-pseudo-label control vs oracle per window | `08_selftrain.py` | `selftrain_windows_raw_*.csv`, `selftrain_summary_raw_*.csv`, `fig_selftrain_raw_*.png` |
 | 4.1 Headline | raw vs refined per window, 4 models, 5 seeds | `06_train.py` (raw, soft, hard τ) | `results_raw_*_summary.csv`, `fig_headline_raw.png` |
-| 4.1b Headline, graph-only | raw vs rewired on `.mat`, arrival waves (D12) | `06_train.py --source mat --waves` | `results_mat_waves_*_summary.csv`, `fig_headline_mat_waves.png` |
+| 4.1b Headline, graph-only | raw vs rewired on `.mat`, arrival waves (D13) | `06_train.py --source mat --waves` | `results_mat_waves_*_summary.csv`, `fig_headline_mat_waves.png` |
 | 4.2b Adversarial, graph-only | graph-level camouflage injection into test waves; AUC-PR (all / clean), injected recall | `09b_graph_adversarial.py --source mat` | `graph_adversarial_summary_mat.csv`, `fig_graph_adversarial_mat.png` |
 | 4.2 Adversarial | injection levels, degradation raw vs refined, alarm latency, recovery | `09_adversarial.py` | `adversarial_summary_raw.csv`, `fig_adversarial_raw.png` |
 | 4.3 Business integration | monitor → trigger → challenger → promotion loop; label budget of 100/window; cost per graph | – | from run logs |

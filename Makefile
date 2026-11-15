@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil train drift selftrain adversarial graph-adversarial figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -28,6 +28,9 @@ llm-score:
 distil:
 	$(PY) scripts/05_distil_edges.py $(SMOKEFLAG)
 
+feature-edges:
+	$(PY) scripts/05b_feature_edges.py --scorer feature $(SMOKEFLAG)
+
 train:
 	$(PY) scripts/06_train.py $(SMOKEFLAG)
 
@@ -40,7 +43,7 @@ selftrain:
 adversarial:
 	$(PY) scripts/09_adversarial.py $(SMOKEFLAG)
 
-graph-adversarial:                 # graph-only track (D12): arrival waves + node injection, runs on .mat
+graph-adversarial:                 # graph-only track (D13): arrival waves + node injection, runs on .mat
 	$(PY) scripts/06_train.py --source mat --waves $(SMOKEFLAG)
 	$(PY) scripts/09b_graph_adversarial.py --source mat $(SMOKEFLAG)
 

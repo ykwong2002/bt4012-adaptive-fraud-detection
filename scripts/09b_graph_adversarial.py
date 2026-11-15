@@ -1,4 +1,4 @@
-"""Graph-only adversarial experiment (decisions D12): works on any graph, including the public .mat.
+"""Graph-only adversarial experiment (decisions D13): works on any graph, including the public .mat.
 
 Per seed, nodes get random arrival waves (camo.eval.waves). For every injection level, camouflaged
 fraud nodes are appended to each test wave (camo.adversarial.graph_inject): template fraud features,

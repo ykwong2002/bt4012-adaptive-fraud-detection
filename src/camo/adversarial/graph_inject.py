@@ -1,4 +1,4 @@
-"""Graph-level camouflage injection for the graph-only track (decisions D12).
+"""Graph-level camouflage injection for the graph-only track (decisions D13).
 
 scripts/09 injects *reviews* into the raw metadata and rebuilds the graph, which needs the raw release.
 This module injects *nodes* straight into a graph with arrival waves (camo.eval.waves), so the

@@ -2,7 +2,7 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
-## D12 2026-11-10 Graph-only protocol: random arrival waves plus graph-level camouflage injection
+## D13 2026-11-10 Graph-only protocol: random arrival waves plus graph-level camouflage injection
 The .mat graph has no dates, so `build_folds` fell back to a stratified split, which we may not report,
 and script 09 needs the raw metadata to inject reviews. On the graph-only track each node instead gets
 a random arrival wave (stratified by label, re-drawn per seed; `camo.eval.waves`) encoded as a
@@ -20,6 +20,22 @@ Rejected: keeping the stratified split (not reportable), and injecting edges wit
 injected fraud to detect). Limitations, stated in the report: the arrival order is synthetic, so this
 measures robustness to camouflage, not real temporal drift; .mat features are full-data aggregates;
 injected nodes are not linked to each other (no campaign structure).
+
+## D12 2026-11-10 Scorer-quality curve with a noisy oracle; compare scorers by rank, not raw score
+The perfect oracle reaches AUC-PR ~1.0 because pruning every cross-label edge encodes the labels in
+the graph, so it bounds nothing useful. Instead we simulate scorers of known quality (edge AUC for
+same- vs cross-label edges, binormal noise) and retrain at each level, then place the real scorers on
+the same axis. All scorers use `softrank` weights: the feature scorer's raw outputs sit in a narrow
+band, so plain soft weights would hide its ordering. Limitation: simulated errors are random, real
+ones are not, so the curve is optimistic.
+
+## D11 2026-11-09 Graph-only edge scorer: MLP encoder link model, not a GNN autoencoder
+Implements the pivot's "feature-consistency model" (scripts/05b). Each node is encoded from its own
+32 features only; a per-relation bilinear decoder is trained to separate observed edges from random
+pairs, and model selection uses held-out link AUC, so no labels are used. Rejected: a GCN encoder,
+which mixes in neighbour features and so hides the camouflage the score is meant to expose. A label
+oracle (keep same-label edges only) is run as the ceiling for any rewiring, and a feature-cosine
+scorer as the trivial baseline.
 
 ## D10 2026-10-30 Adversarial runs keep the clean graph's windows and respect the product cap
 Injected reviews only go to products with room under the 800-review filter (otherwise the filter
