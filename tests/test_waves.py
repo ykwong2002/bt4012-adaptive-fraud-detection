@@ -79,3 +79,25 @@ def test_injection_is_reproducible():
     np.testing.assert_array_equal(a[0].x, b[0].x)
     for r in g.edges:
         np.testing.assert_array_equal(a[0].edges[r], b[0].edges[r])
+
+
+def test_degree_features_are_comparable_across_graph_states():
+    """D14: rescaled degree has the same mean on the sparse training graph as on the full graph;
+    raw degree would differ by the visible share (about 3/8 here)."""
+    from camo.models.catboost_model import DEG_SCALE, neighbour_aggregates
+
+    g = random_graph(n=4000, seed=1)
+    w = assign_waves(g.y, 8, seed=0)
+    _, tr, folds = build_folds(with_waves(g, w), CFG, 0, windows=w)
+    first, last = folds[0], folds[-1]
+    assert first.n_visible == len(tr) and last.n_visible == g.n
+    d = g.x.shape[1]
+    col = d  # first relation's degree column sits right after its d neighbour means
+    a, names = neighbour_aggregates(g.x, first.edges, None, first.n_visible)
+    b, _ = neighbour_aggregates(g.x, last.edges, None, last.n_visible)
+    assert names[col].endswith(f"wdeg_per{DEG_SCALE}")
+    ratio = a[tr, col].mean() / b[tr, col].mean()
+    assert 0.85 < ratio < 1.15
+    raw_a = a[tr, col] * first.n_visible / DEG_SCALE
+    raw_b = b[tr, col] * last.n_visible / DEG_SCALE
+    assert raw_a.mean() / raw_b.mean() < 0.5

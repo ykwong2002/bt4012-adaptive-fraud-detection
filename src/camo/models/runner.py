@@ -35,12 +35,12 @@ def run_model(name, g, x, train_idx, folds, seed, smoke, rho):
         for f in tests:
             out[f.name] = predict_wsage(model, x, RelGraph(g.n, fe(f), fw(f)), seed)
     elif name == "catboost":
-        xtr = make_table(x, tr.edges, tr.weights); xva = make_table(x, va.edges, va.weights)
+        xtr = make_table(x, tr.edges, tr.weights, tr.n_visible); xva = make_table(x, va.edges, va.weights, va.n_visible)
         xt = np.where(np.isin(np.arange(g.n), train_idx)[:, None], xtr, xva)  # train rows from train graph
         clf = train_catboost(xt, y, train_idx, va.eval_idx, seed, iterations=100 if smoke else 600)
         out["val"] = clf.predict_proba(xva)[:, 1]
         for f in tests:
-            out[f.name] = clf.predict_proba(make_table(x, f.edges, f.weights))[:, 1]
+            out[f.name] = clf.predict_proba(make_table(x, f.edges, f.weights, f.n_visible))[:, 1]
     elif name == "ae":
         s = ae_anomaly_scores(x, train_idx, seed, epochs=50 if smoke else 200)
         out["val"] = s

@@ -2,6 +2,21 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D14 2026-11-15 Degree features are rescaled by the number of visible nodes
+Under the wave protocol (D13) an edge is visible only once both endpoints have arrived, so the
+training graph holds about (3/8)^2 = 14 % of the edges and the graph keeps growing through the test
+waves. CatBoost's per-relation weighted degree learned on the sparse training graph therefore meant
+something different on every later wave (on training nodes, mean R-S-R degree 12.0 in the training
+graph vs 32.2 in the full graph). Degree is now divided by the number of nodes visible at the cutoff
+(reported per 10,000 visible nodes; `catboost_model.neighbour_aggregates`, `Fold.n_visible`). Under
+random arrival each neighbour is visible with probability n_visible / n, so this is an unbiased
+estimate of the full-graph degree rate (32.1 vs 32.2 after rescaling). Neighbour means need no
+correction. Check on .mat (waves, 2 seeds, CatBoost): test AUC-PR 0.844 -> 0.850, and the decline
+across test waves (0.849 -> 0.841) disappears (0.853 -> 0.850). The same rescaling applies to dated
+graphs, where it removes the same train/val mismatch; undated (stratified) runs are unchanged up to a
+constant. Rejected: dropping degree (it carries signal) and full-graph transductive training (it
+would let the incumbent see edges to nodes that have not arrived yet).
+
 ## D13 2026-11-10 Graph-only protocol: random arrival waves plus graph-level camouflage injection
 The .mat graph has no dates, so `build_folds` fell back to a stratified split, which we may not report,
 and script 09 needs the raw metadata to inject reviews. On the graph-only track each node instead gets

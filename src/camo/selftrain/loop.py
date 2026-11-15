@@ -68,7 +68,7 @@ def run_selftrain(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
     unl = np.setdiff1d(pool, probe); eval_idx = unl
     mu, sd = g.x[train_idx].mean(0), g.x[train_idx].std(0) + 1e-6
     x = ((g.x - mu) / sd).astype(np.float32)
-    xtab = make_table(x, folds[0].edges, folds[0].weights)
+    xtab = make_table(x, folds[0].edges, folds[0].weights, folds[0].n_visible)
 
     inc = fit_challenger(xtab, g.y[train_idx], train_idx, seed, True, iters)
     inc_score = inc.predict_proba(xtab)[:, 1]
@@ -121,7 +121,7 @@ def run_triggered(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
 
     def table_at(cut):
         e, ww = _mask(edges, ew, g.dates, cut)
-        return make_table(x, e, ww), e, ww
+        return make_table(x, e, ww, int((g.dates <= cut).sum())), e, ww
 
     rng = np.random.default_rng(seed)
     probe_of = {k: rng.choice(np.where(w == k)[0], min(probe_per_window, int((w == k).sum())), replace=False) for k in post}
