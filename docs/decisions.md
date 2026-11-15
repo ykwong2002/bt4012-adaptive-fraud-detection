@@ -2,6 +2,27 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D17 2026-11-15 Paired seed-level intervals, a bootstrap promotion rule, and operating-point metrics
+(1) Uncertainty: `scripts/12_stats.py` pairs every comparison on the seed (same waves, same
+initialisation), averages the difference over waves per seed, and reports a 95 % t-interval across
+seeds plus the share of (seed, wave) pairs that are positive. With 3 seeds the intervals are wide; we
+report them rather than seed std. Rewiring (stats_rewiring_mat_waves.csv): no real label-free scorer
+gives a gain whose interval excludes 0 for both models (feature: WeightedSAGE +0.011 [-0.007, 0.029],
+CatBoost +0.006 [-0.004, 0.015]; R-U-R: WeightedSAGE +0.010 [0.004, 0.016] but CatBoost -0.012
+[-0.018, -0.006]); the simulated scorer clears 0 from edge AUC 0.6 (WeightedSAGE) / 0.7 (CatBoost).
+(2) Promotion: `chal_ap > deployed_ap` on ~100-300 probe labels promotes on noise. A challenger is now
+promoted only if it also wins in >= 90 % of paired bootstrap resamples of the probe
+(`selftrain.yaml: promotion`, `challenger.promote`). In the loop (D16) this blocked 6 of 18 second
+retrains (win probability 0.46-0.89) and cost at most 0.007 AUC-PR (per_class 0.935 -> 0.932); the
+ranking of variants is unchanged, so the blocked promotions were noise-level. Loop vs control, 95 %
+interval: per_class +0.030 [0.023, 0.037], prior_match +0.026 [0.011, 0.041], all +0.016 [0.008,
+0.025], naive +0.009 [0.004, 0.015], balanced_loss +0.003 [-0.040, 0.046].
+(3) Operating point: AUC-PR only ranks, so every loop window now also reports flag rate, recall and
+precision at the deployed model's 0.5 threshold (`loop.at_threshold`). After retraining under attack,
+naive (collapsed pseudo-labels) reaches recall 0.75 at precision 0.88, barely above the incumbent's
+0.73; per_class reaches 0.80 at 0.88. Balanced-loss variants flag ~35 % of a wave (recall ~0.9,
+precision ~0.74): a different operating point, not a better ranking.
+
 ## D16 2026-11-15 End-to-end adaptive loop on the graph-only track
 `scripts/11_graph_loop.py` runs monitor -> alarm -> label-scarce retraining -> promotion on .mat under
 arrival waves (D13), in a clean scenario (every alarm is false) and an attack scenario (D13

@@ -44,7 +44,7 @@ Raw review text is obtained by email from the dataset author; see `data/README.m
 | adversarial injection | `uv run python scripts/09_adversarial.py` | `outputs/tables/adversarial_*.csv` |
 | graph-only track on `.mat` (D13): arrival waves + camouflage injection | `make graph-adversarial` | `outputs/tables/results_mat_waves_*.csv`, `graph_adversarial_*_mat.csv` |
 | graph-only scorer curve, R-U-R scorer, edge diagnostics (D12, D15) | `make graph-scorers` then `python scripts/05c_edge_diagnostics.py --source mat` | `scorer_curve_mat_waves.csv`, `edge_auc_centred_mat.csv` |
-| graph-only adaptive loop: monitor, alarm, self-training (D16) | `make graph-loop` | `graph_loop_*_mat_lvl*.csv` |
+| graph-only adaptive loop: monitor, alarm, self-training (D16), paired intervals (D17) | `make graph-loop` | `graph_loop_*_mat_lvl*.csv`, `stats_*_mat*.csv` |
 | all report figures | `uv run python scripts/10_figures.py` | `outputs/figures/` |
 
 `make all SMOKE=1` runs every step on a 2k-node subsample (minutes on a laptop). Every script writes

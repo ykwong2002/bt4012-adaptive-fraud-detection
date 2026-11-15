@@ -139,3 +139,33 @@ def test_static_ablation_runs_with_control_and_refuses_dates(raw_mini):
     assert {r["variant"] for r in last} == {"naive", "all"}
     assert all("control_eval_ap" in r and "pseudo_label_gain" in r for r in last)
     assert bracket["protocol"] == "stratified" and 0 < bracket["em_prior"] < 1
+
+
+def test_promotion_needs_a_robust_win():
+    """D17: a challenger that is only marginally better on a small probe is not promoted under the
+    bootstrap rule, but one that is clearly better is; min_win_prob=0 keeps the plain rule."""
+    from camo.selftrain.challenger import promote
+
+    rng = np.random.default_rng(0)
+    y = (rng.random(100) < 0.15).astype(int)
+    probe = np.arange(100)
+    inc = y * 0.6 + rng.random(100)
+    tiny = inc.copy(); tiny[np.argmax(y)] += 0.05             # nudges one positive up: a noise-level win
+    strong = y * 3.0 + rng.random(100)
+    a = promote(inc, tiny, probe, y)                           # old rule
+    b = promote(inc, tiny, probe, y, min_win_prob=0.9, n_boot=300)
+    c = promote(inc, strong, probe, y, min_win_prob=0.9, n_boot=300)
+    if a["chal_probe_ap"] > a["inc_probe_ap"]:
+        assert a["promoted"]
+    assert not b["promoted"]
+    assert c["promoted"] and c["win_prob"] >= 0.9
+
+
+def test_threshold_metrics_expose_collapse():
+    from camo.selftrain.loop import at_threshold
+
+    y = np.array([1, 1, 0, 0, 0, 0])
+    idx = np.arange(6)
+    collapsed = np.array([0.4, 0.3, 0.1, 0.1, 0.1, 0.1])       # ranks perfectly, flags nothing
+    m = at_threshold(y, collapsed, idx)
+    assert m["flag_rate"] == 0 and m["recall_at_thr"] == 0 and np.isnan(m["precision_at_thr"])

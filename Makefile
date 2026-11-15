@@ -73,3 +73,4 @@ rur-scorer:
 graph-loop:
 	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
+	$(PY) scripts/12_stats.py --tag mat

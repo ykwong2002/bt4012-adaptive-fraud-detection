@@ -16,6 +16,7 @@
 | 4.2b Adversarial, graph-only | graph-level camouflage injection into test waves; AUC-PR (all / clean), injected recall | `09b_graph_adversarial.py --source mat` | `graph_adversarial_summary_mat.csv`, `fig_graph_adversarial_mat.png` |
 | 4.2 Adversarial | injection levels, degradation raw vs refined, alarm latency, recovery | `09_adversarial.py` | `adversarial_summary_raw.csv`, `fig_adversarial_raw.png` |
 | 4.2c Adaptive loop, graph-only | clean vs attack waves: false alarms, alarm latency, sensitivity (5/10/20 %), recovery per self-training variant vs incumbent/control/oracle, bias audit (D16) | `11_graph_loop.py --source mat` | `graph_loop_summary_mat_lvl0.2.csv`, `graph_loop_monitor_summary_mat_lvl*.csv`, `fig_graph_loop_mat_lvl0.2.png` |
+| 4.2d Uncertainty | paired seed-level 95 % intervals for rewiring gains and loop gains; promotion win probability; recall / precision at threshold (D17) | `12_stats.py --tag mat` | `stats_rewiring_mat_waves.csv`, `stats_loop_mat_lvl0.2.csv` |
 | 4.3 Business integration | monitor → trigger → challenger → promotion loop; label budget of 100/window; cost per graph | – | from run logs |
 | 5 Limitations | scoring errors propagate (τ sweep); unspecific sincere reviewers (manual review of top false positives); label is as-of-crawl; injection text style; natural drift may be weak | – | – |
 | 5 Reproducibility | README reproduce table; `run.json` per script (git SHA, config hash, seed, wall time); committed LLM caches | all | `outputs/runs/*/run.json` |
