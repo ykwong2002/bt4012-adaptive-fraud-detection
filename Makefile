@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -51,3 +51,14 @@ figures:
 	$(PY) scripts/10_figures.py
 
 all: data eda train drift selftrain figures
+
+# graph-only scorer-quality curve under arrival waves (D12, D13): noisy oracle, cosine, feature scorer
+NOISY ?= 0.5 0.6 0.7 0.8 0.9
+CURVE_SEEDS ?= 0,1,2
+comma := ,
+graph-scorers:
+	$(PY) scripts/05b_feature_edges.py --source mat --scorer cosine
+	for a in $(NOISY); do $(PY) scripts/05b_feature_edges.py --source mat --scorer noisy_oracle --edge-auc $$a; done
+	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer feature --waves-seed $$s; done
+	for w in cosine $(addprefix noisy,$(NOISY)); do $(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights data/processed/edge_scores_mat_$$w.npz --tag mat_waves_$${w}_softrank; done
+	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_feature_w{seed}.npz' --tag mat_waves_feature_softrank

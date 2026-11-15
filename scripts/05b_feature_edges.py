@@ -1,7 +1,9 @@
 """Graph-only edge scores (no text): label-free feature-consistency scorer, cosine baseline, or the
 label oracle and its noisy version with a chosen edge AUC (diagnostics only). Writes
 data/processed/edge_scores_<tag>_<scorer>.npz for scripts/06 (--weights), the tau sweep and the
-weighted homophily table."""
+weighted homophily table.
+--waves-seed S: on an undated graph, fit the feature scorer only on edges between training-wave nodes
+of the arrival waves for seed S (decisions D13), and suffix the outputs with _w<S>."""
 from __future__ import annotations
 
 import numpy as np
@@ -11,6 +13,7 @@ from _common import ROOT, load_config, parser, processed_path, resolve_source
 from camo.data.load_mat import load_graph
 from camo.eval.runlog import RunLog
 from camo.eval.splits import equal_count_windows, temporal_plan
+from camo.eval.waves import assign_waves
 from camo.graph.feature_scorer import FeatureEdgeScorer, cosine_scores
 from camo.graph.homophily import homophily_table
 from camo.graph.rewire import edge_label_auc, noisy_oracle_scores, oracle_scores, tau_sweep_table
@@ -18,11 +21,15 @@ from camo.graph.rewire import edge_label_auc, noisy_oracle_scores, oracle_scores
 TAB = ROOT / "outputs" / "tables"
 
 
-def fit_edges(g, cfg):
-    """Edges the scorer may learn from: all of them on .mat, only training-period ones when dated."""
-    if g.dates is None:
+def fit_edges(g, cfg, waves_seed=None):
+    """Edges the scorer may learn from: only those between training-period nodes (dated graph) or
+    training-wave nodes (--waves-seed); all of them only for the stratified .mat ablation."""
+    if waves_seed is not None:
+        w = assign_waves(g.y, cfg["windows"]["n_windows"], waves_seed)
+    elif g.dates is None:
         return g.edges
-    w = equal_count_windows(g.dates, cfg["windows"]["n_windows"])
+    else:
+        w = equal_count_windows(g.dates, cfg["windows"]["n_windows"])
     plan = temporal_plan(w, cfg["windows"]["n_train_windows"], cfg["windows"]["n_val_windows"])
     ok = np.isin(w, plan["train"])
     return {r: e[:, ok[e[0]] & ok[e[1]]] for r, e in g.edges.items()}
@@ -33,12 +40,13 @@ def main():
     p.add_argument("--scorer", choices=["feature", "cosine", "oracle", "noisy_oracle"], default="feature")
     p.add_argument("--edge-auc", type=float, default=0.7, help="target same- vs cross-label AUC for noisy_oracle")
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--waves-seed", type=int, default=None, help="fit on training-wave edges of this seed's waves")
     args = p.parse_args()
     cfg, rcfg = load_config("base"), load_config("reconstruction")
     source = resolve_source(args.source)
     g = load_graph(processed_path(source, args.smoke))
     name = f"noisy{args.edge_auc}" if args.scorer == "noisy_oracle" else args.scorer
-    tag = f"{source}{'_smoke' if args.smoke else ''}_{name}"
+    tag = f"{source}{'_smoke' if args.smoke else ''}_{name}{'' if args.waves_seed is None else f'_w{args.waves_seed}'}"
     log = RunLog(f"05b_feature_edges_{tag}", {**rcfg, **vars(args)}, seed=args.seed)
     TAB.mkdir(parents=True, exist_ok=True)
 
@@ -52,7 +60,7 @@ def main():
         fcfg = dict(rcfg["feature_scorer"])
         if args.smoke:
             fcfg.update(steps=300, batch=512)
-        scorer = FeatureEdgeScorer(seed=args.seed, **fcfg).fit(g.x, fit_edges(g, cfg))
+        scorer = FeatureEdgeScorer(seed=args.seed, **fcfg).fit(g.x, fit_edges(g, cfg, args.waves_seed))
         pd.DataFrame(scorer.history).to_csv(TAB / f"feature_scorer_history_{tag}.csv", index=False)
         print(f"link-prediction val AUC (label-free model selection): {scorer.val_auc:.4f}")
         log.note(val_auc=scorer.val_auc, steps_run=scorer.history[-1]["step"] if scorer.history else 0)

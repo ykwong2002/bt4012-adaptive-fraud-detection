@@ -28,7 +28,8 @@ def load_weights(path, g):
 
 def main():
     p = parser(__doc__)
-    p.add_argument("--weights", default=None, help="npz of edge scores per relation (from scripts/05)")
+    p.add_argument("--weights", default=None, help="npz of edge scores per relation (from scripts/05); "
+                   "a literal {seed} in the path is filled per seed (per-seed scorers under --waves)")
     p.add_argument("--mode", choices=["soft", "softrank", "hard"], default=None)
     p.add_argument("--tau", type=float, default=0.0)
     p.add_argument("--models", default="wsage,care,catboost,ae")
@@ -40,9 +41,10 @@ def main():
     cfg = load_config("base")
     source = resolve_source(args.source)
     g = load_graph(processed_path(source, args.smoke))
-    weights = load_weights(args.weights, g)
-    graph_name = "raw_graph" if weights is None else f"refined_{args.mode}{f'_tau{args.tau}' if args.mode == 'hard' else ''}"
-    weights_name = "none" if args.weights is None else Path(args.weights).stem.removeprefix("edge_scores_")
+    per_seed = args.weights is not None and "{seed}" in args.weights
+    weights = None if per_seed else load_weights(args.weights, g)
+    graph_name = "raw_graph" if args.weights is None else f"refined_{args.mode}{f'_tau{args.tau}' if args.mode == 'hard' else ''}"
+    weights_name = "none" if args.weights is None else Path(args.weights.replace("_w{seed}", "")).stem.removeprefix("edge_scores_")
     tag = args.tag or f"{source}{'_smoke' if args.smoke else ''}{'_waves' if args.waves else ''}_{graph_name}"
     log = RunLog(f"06_train_{tag}", {**cfg, **vars(args)})
     if args.seeds:
@@ -54,6 +56,8 @@ def main():
 
     rows = []
     for seed in seeds:
+        if per_seed:
+            weights = load_weights(args.weights.format(seed=seed), g)
         gs, wv = g, None
         if args.waves:
             wv = assign_waves(g.y, cfg["windows"]["n_windows"], seed); gs = with_waves(g, wv)

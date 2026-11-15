@@ -64,23 +64,32 @@ MODEL_NAMES = {"wsage": "WeightedSAGE", "catboost": "CatBoost", "care": "CARE-st
 
 def scorer_curve(tag):
     """Model AUC-PR against edge-scorer quality: the noisy-oracle sweep with the real scorers placed on it.
-    Also writes the plotted numbers to scorer_curve_<tag>.csv."""
-    files = sorted(TAB.glob(f"results_{tag}_*_softrank.csv"))
+    Works for the stratified tag ("mat": fold "test") and the wave protocol ("mat_waves": per seed, the
+    mean over test waves). Also writes the plotted numbers to scorer_curve_<tag>.csv."""
+    files = [f for f in sorted(TAB.glob(f"results_{tag}_*_softrank.csv"))
+             if tag.endswith("waves") or "_waves_" not in f.name]      # keep the two protocols apart
     base = read(f"results_{tag}_raw_graph.csv")
     if not files or base is None:
         return
+    source = tag.split("_")[0]
+
+    def per_seed(d, keys):
+        d = d[(d["fold"] == "test") | d["fold"].str.startswith("test_w")]
+        return d.groupby(keys + ["seed"])["auc_pr"].mean().reset_index()
+
     df = pd.concat(pd.read_csv(f) for f in files)
-    df = df[df["fold"] == "test"].copy()
-    df["scorer"] = df["weights"].str.removeprefix(f"{tag}_")
+    df["scorer"] = df["weights"].str.removeprefix(f"{source}_")
     auc = {}
     for s in df["scorer"].unique():
-        h = read(f"homophily_weighted_{tag}_{s}.csv")
-        if h is not None:
-            auc[s] = float(np.average(h["edge_auc_same_vs_cross"], weights=h["edges"]))
+        hs = [read(f"homophily_weighted_{source}_{s}.csv")] + [pd.read_csv(f) for f in sorted(TAB.glob(f"homophily_weighted_{source}_{s}_w*.csv"))]
+        hs = [h for h in hs if h is not None]
+        if hs:
+            auc[s] = float(np.mean([np.average(h["edge_auc_same_vs_cross"], weights=h["edges"]) for h in hs]))
+    df = per_seed(df, ["model", "scorer"])
     df["edge_auc"] = df["scorer"].map(auc)
     t = df.groupby(["model", "scorer", "edge_auc"])["auc_pr"].agg(["mean", "std", "count"]).reset_index()
-    base = base[(base["fold"] == "test") & base["seed"].isin(df["seed"].unique())]
-    raw = base.groupby("model")["auc_pr"].mean()
+    base = per_seed(base, ["model"])
+    raw = base[base["seed"].isin(df["seed"].unique())].groupby("model")["auc_pr"].mean()
     t["raw_graph_auc_pr"] = t["model"].map(raw)
     t.to_csv(TAB / f"scorer_curve_{tag}.csv", index=False)
 
@@ -213,7 +222,7 @@ def main():
         fn(a.tag)
     adversarial(a.tag, "graph_adversarial", "model")       # graph-only track (D13), any source
     if a.tag == "raw":
-        headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat")
+        headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves")
         adversarial("mat", "graph_adversarial", "model")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
