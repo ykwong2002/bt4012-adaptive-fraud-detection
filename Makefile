@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-all figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -74,3 +74,13 @@ graph-loop:
 	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
 	$(PY) scripts/12_stats.py --tag mat
+
+# every reported number and figure (graph-only track, D18), from a fresh clone
+graph-all: data
+	$(PY) scripts/02_build_graph.py --source mat
+	$(PY) scripts/03_eda.py --source mat
+	$(PY) scripts/06_train.py --source mat --waves
+	$(MAKE) graph-scorers PY="$(PY)"
+	$(PY) scripts/05c_edge_diagnostics.py --source mat
+	$(MAKE) graph-loop PY="$(PY)"
+	$(PY) scripts/10_figures.py

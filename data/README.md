@@ -1,6 +1,6 @@
 # Data
 
-Two YelpChi versions are used. Nothing under `data/raw/` is committed.
+Two YelpChi versions are supported; only the graph file is used for reported results. Nothing under `data/raw/` is committed.
 
 ## 1. Graph file (public, auto-downloaded)
 
@@ -13,6 +13,10 @@ Keys: `features` (45,954 × 32 sparse), `label` (1 × 45,954), `net_rur`, `net_r
 Published undirected edge counts: R-U-R 49,315 · R-T-R 573,616 · R-S-R 3,402,743.
 
 ## 2. Raw reviews with text and dates (by email from the dataset author)
+
+> **Not available (Nov 2026).** This release could not be obtained, so no reported result uses it
+> (`docs/decisions.md` D18). The section below documents the loader, which is tested on the synthetic
+> fixture `tests/fixtures/raw_mini`.
 
 Rayana & Akoglu, KDD 2015. Request from Shebuti Rayana (srayana@cs.stonybrook.edu), see the ODDS
 page https://odds.cs.stonybrook.edu/yelpchi-dataset/. Expected: 67,395 reviews, 38,063 users,

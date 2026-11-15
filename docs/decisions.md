@@ -2,6 +2,28 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D18 2026-11-15 The graph-only track is final; the claim is restated around what it can show
+The raw review text and dates (Rayana & Akoglu 2015) are no longer obtainable, so the pivot below is
+taken for good: every reported number comes from the public `YelpChi.mat` under random arrival waves
+(D13). The text pipeline (`load_raw`, `04_llm_score`, `05_distil_edges`, `07`-`09`) stays in the repo
+and runs on the synthetic fixture, but produces no reported result.
+
+Restated claim, in two parts that the graph-only data can test:
+(1) *How good must a label-free edge scorer be before structure repair pays?* The noisy-oracle curve
+(D12) sets the bar (gain from edge AUC ~0.6-0.7; WeightedSAGE matches raw-graph CatBoost at ~0.85),
+the right yardstick is fraud-centred edge AUC (D15), and none of our label-free scorers on `.mat`
+(feature, cosine, R-U-R profile) clears it: their gains have intervals that include 0 or disagree
+across models (D17). This is a negative result with a usable threshold, not a failed experiment.
+(2) *Can a label-free monitor plus label-scarce retraining respond to camouflage without collapsing
+toward the normal class?* Yes at 20 % injection: 0 false alarms on clean waves, alarm one wave after
+the attack starts, per_class / prior_match recover +0.030 / +0.026 AUC-PR over the no-pseudo-label
+control; naive and balanced_loss collapse toward the legit class (professor Q2). The monitor misses
+5-10 % injection.
+
+Rejected: keep waiting for the text (deadline 20 Nov); report the stratified `.mat` numbers as the
+headline (leak-prone full-data features without any arrival order); claim the text method works on the
+strength of the noisy-oracle curve alone (it shows what would be needed, not that text delivers it).
+
 ## D17 2026-11-15 Paired seed-level intervals, a bootstrap promotion rule, and operating-point metrics
 (1) Uncertainty: `scripts/12_stats.py` pairs every comparison on the seed (same waves, same
 initialisation), averages the difference over waves per seed, and reports a 95 % t-interval across
@@ -176,7 +198,7 @@ with products > 800 reviews removed, so rebuilding from metadata with the publis
 definitions is reproducible and verifiable against the published counts. Pre-registered tolerance:
 nodes ±2 %, products = 182, edges ±10 % per relation; residual reported, not hidden.
 
-## Pivot (if raw text has not arrived by 8 Nov)
+## Pivot (if raw text has not arrived by 8 Nov) — taken; see D11-D18
 Graph-only track on `.mat`: the edge scorer becomes a label-free feature-consistency model (graph
 autoencoder link plausibility on the 32 features); injection waves replace temporal windows; the
 self-training bias audit is unchanged. Text code stays ready so arrival later is one command.
