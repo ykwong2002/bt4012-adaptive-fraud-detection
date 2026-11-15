@@ -57,8 +57,8 @@ def headline(tag):
     fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
-SCORER_COLORS = {"feature": "#1f77b4", "cosine": "#ff7f0e"}
-SCORER_LABEL_OFFSET = {"feature": (-8, 8, "right"), "cosine": (8, -12, "left")}
+SCORER_COLORS = {"feature": "#1f77b4", "cosine": "#ff7f0e", "rur_profile": "#2ca02c"}
+SCORER_LABEL_OFFSET = {"feature": (-8, 8, "right"), "cosine": (8, -12, "left"), "rur_profile": (8, -12, "left")}
 MODEL_NAMES = {"wsage": "WeightedSAGE", "catboost": "CatBoost", "care": "CARE-static", "ae": "Autoencoder"}
 
 

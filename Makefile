@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -62,3 +62,9 @@ graph-scorers:
 	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer feature --waves-seed $$s; done
 	for w in cosine $(addprefix noisy,$(NOISY)); do $(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights data/processed/edge_scores_mat_$$w.npz --tag mat_waves_$${w}_softrank; done
 	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_feature_w{seed}.npz' --tag mat_waves_feature_softrank
+	$(MAKE) rur-scorer PY="$(PY)" CURVE_SEEDS=$(CURVE_SEEDS)
+
+# R-U-R user-profile scorer (D15), fit per seed on that seed's training waves
+rur-scorer:
+	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer rur_profile --waves-seed $$s; done
+	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_rur_profile_w{seed}.npz' --tag mat_waves_rur_profile_softrank

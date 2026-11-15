@@ -2,6 +2,27 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D15 2026-11-15 R-U-R user-profile scorer, and why global edge AUC is the wrong yardstick
+Idea: R-U-R is the one relation camouflage does not break (93 % fraud homophily), so describe each
+review by its user profile (mean of its own and its R-U-R neighbours' quantile-normalised features)
+and score an R-S-R / R-T-R edge by profile distance (`camo.graph.rur_scorer`, `05b --scorer
+rur_profile`). Label-free and time-respecting: each edge is scored when it appears, from R-U-R
+neighbours visible by then; the transform and scale are fitted on training-wave nodes. Chosen among
+six variants by edge AUC on training-wave edges only (test labels never used).
+Result (.mat, waves, 3 seeds): global edge AUC 0.686, close to the noisy oracle's 0.7, but
+WeightedSAGE +0.010 and CatBoost -0.012, where the simulated 0.7 scorer gives +0.05. Diagnosis
+(`05c_edge_diagnostics.py`, `edge_auc_centred_mat.csv`): the 0.686 comes from legit-legit edges
+(legit-centred AUC 0.69, ~77 % of edges); on edges touching a fraud node it is at chance (0.48-0.51),
+because most fraud reviews have no R-U-R neighbours, so their profiles are unsmoothed and far from
+everything; fraud-fraud and fraud-legit edges get the same low weight (rank 0.34 vs 0.36). Cosine and
+the link-prediction scorer are the reverse: 0.52-0.54 globally but 0.61-0.67 fraud-centred.
+Consequences: (1) we report fraud-centred and legit-centred AUC next to global AUC for every scorer;
+(2) the noisy-oracle curve (D12) assumes errors independent of the node, which real scorers violate,
+so its x-axis is an optimistic guide, not a prediction; (3) dividing the distance by its expected
+noise (sqrt(1/(k_u+1) + 1/(k_v+1))) balances the two sides at ~0.58-0.60 but does not beat cosine
+around fraud nodes, so we stop the scorer search here. On .mat, no label-free scorer we tried
+reaches the ~0.7 fraud-centred quality where repair starts to pay.
+
 ## D14 2026-11-15 Degree features are rescaled by the number of visible nodes
 Under the wave protocol (D13) an edge is visible only once both endpoints have arrived, so the
 training graph holds about (3/8)^2 = 14 % of the edges and the graph keeps growing through the test

@@ -1,4 +1,5 @@
-"""Graph-only edge scores (no text): label-free feature-consistency scorer, cosine baseline, or the
+"""Graph-only edge scores (no text): label-free feature-consistency scorer, cosine baseline, R-U-R
+user-profile distance (D15), or the
 label oracle and its noisy version with a chosen edge AUC (diagnostics only). Writes
 data/processed/edge_scores_<tag>_<scorer>.npz for scripts/06 (--weights), the tau sweep and the
 weighted homophily table.
@@ -16,28 +17,35 @@ from camo.eval.splits import equal_count_windows, temporal_plan
 from camo.eval.waves import assign_waves
 from camo.graph.feature_scorer import FeatureEdgeScorer, cosine_scores
 from camo.graph.homophily import homophily_table
+from camo.graph.rur_scorer import rur_profile_scores
 from camo.graph.rewire import edge_label_auc, noisy_oracle_scores, oracle_scores, tau_sweep_table
 
 TAB = ROOT / "outputs" / "tables"
 
 
-def fit_edges(g, cfg, waves_seed=None):
-    """Edges the scorer may learn from: only those between training-period nodes (dated graph) or
-    training-wave nodes (--waves-seed); all of them only for the stratified .mat ablation."""
+def arrival_stages(g, cfg, waves_seed=None):
+    """(arrival stage per node, training mask): this seed's waves (--waves-seed), the temporal windows
+    of a dated graph, or (None, all True) for the stratified .mat ablation."""
     if waves_seed is not None:
         w = assign_waves(g.y, cfg["windows"]["n_windows"], waves_seed)
     elif g.dates is None:
-        return g.edges
+        return None, np.ones(g.n, bool)
     else:
         w = equal_count_windows(g.dates, cfg["windows"]["n_windows"])
     plan = temporal_plan(w, cfg["windows"]["n_train_windows"], cfg["windows"]["n_val_windows"])
-    ok = np.isin(w, plan["train"])
+    return w, np.isin(w, plan["train"])
+
+
+def fit_edges(g, cfg, waves_seed=None):
+    """Edges the scorer may learn from: only those between training-period nodes (dated graph) or
+    training-wave nodes (--waves-seed); all of them only for the stratified .mat ablation."""
+    _, ok = arrival_stages(g, cfg, waves_seed)
     return {r: e[:, ok[e[0]] & ok[e[1]]] for r, e in g.edges.items()}
 
 
 def main():
     p = parser(__doc__)
-    p.add_argument("--scorer", choices=["feature", "cosine", "oracle", "noisy_oracle"], default="feature")
+    p.add_argument("--scorer", choices=["feature", "cosine", "rur_profile", "oracle", "noisy_oracle"], default="feature")
     p.add_argument("--edge-auc", type=float, default=0.7, help="target same- vs cross-label AUC for noisy_oracle")
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--waves-seed", type=int, default=None, help="fit on training-wave edges of this seed's waves")
@@ -56,6 +64,9 @@ def main():
         scores = noisy_oracle_scores(g.edges, g.y, args.edge_auc, args.seed)
     elif args.scorer == "cosine":
         scores = cosine_scores(g.x, g.edges)
+    elif args.scorer == "rur_profile":       # D15: time-respecting, fitted on training nodes only
+        arrival, train = arrival_stages(g, cfg, args.waves_seed)
+        scores = rur_profile_scores(g.x, g.edges, np.where(train)[0], arrival)
     else:
         fcfg = dict(rcfg["feature_scorer"])
         if args.smoke:
