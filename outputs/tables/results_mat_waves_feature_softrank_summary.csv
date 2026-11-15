@@ -1,0 +1,11 @@
+model,graph,weights,protocol,fold,auc_pr,auroc,recall@5%,recall@10%,n_seeds
+catboost,refined_softrank,mat_feature,waves,test_w4,0.8548 ± 0.0044,0.9573 ± 0.0038,0.3345 ± 0.0025,0.6116 ± 0.003,3
+catboost,refined_softrank,mat_feature,waves,test_w5,0.849 ± 0.0105,0.9551 ± 0.0042,0.3341 ± 0.005,0.6075 ± 0.0068,3
+catboost,refined_softrank,mat_feature,waves,test_w6,0.8513 ± 0.0082,0.9568 ± 0.0048,0.3353 ± 0.003,0.6103 ± 0.0079,3
+catboost,refined_softrank,mat_feature,waves,test_w7,0.8582 ± 0.0064,0.9611 ± 0.001,0.3333 ± 0.0032,0.6123 ± 0.0035,3
+catboost,refined_softrank,mat_feature,waves,val,0.8439 ± 0.0153,0.9583 ± 0.0058,0.3297 ± 0.0014,0.6044 ± 0.0084,3
+wsage,refined_softrank,mat_feature,waves,test_w4,0.7057 ± 0.0053,0.9037 ± 0.0077,0.3106 ± 0.0028,0.5138 ± 0.0104,3
+wsage,refined_softrank,mat_feature,waves,test_w5,0.7028 ± 0.0071,0.9016 ± 0.0044,0.3046 ± 0.0042,0.5076 ± 0.0139,3
+wsage,refined_softrank,mat_feature,waves,test_w6,0.7126 ± 0.0035,0.9032 ± 0.008,0.3118 ± 0.0024,0.5144 ± 0.0036,3
+wsage,refined_softrank,mat_feature,waves,test_w7,0.7025 ± 0.0171,0.9033 ± 0.0045,0.307 ± 0.0083,0.5172 ± 0.0093,3
+wsage,refined_softrank,mat_feature,waves,val,0.6937 ± 0.0326,0.9076 ± 0.0093,0.2966 ± 0.012,0.5074 ± 0.0294,3

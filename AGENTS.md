@@ -107,6 +107,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-11-15 (feat/graph-waves) .mat results under waves (D13, D14), test AUC-PR: CatBoost 0.850, WeightedSAGE 0.698, CARE-static 0.683, AE 0.210 (5 seeds). Scorer curve (3 seeds): repair pays from edge AUC ~0.6-0.7; WeightedSAGE needs ~0.85 to match raw CatBoost. Feature scorer (edge AUC 0.52) gives +0.011 for WeightedSAGE, +0.005 for CatBoost. `make graph-scorers`.
 - 2026-11-15 (branch feat/graph-waves): merged feat/edge-scorer; degree features rescaled by visible nodes (D14). `YelpChi.mat` downloaded (hash checked). Raw text is no longer obtainable: the project runs on the graph-only track.
 - 2026-11-10 (branch feat/graph-waves): graph-only protocol (D13). `06_train.py --waves` and `09b_graph_adversarial.py` run the headline and adversarial experiments on `.mat` with random arrival waves and graph-level camouflage injection (`make graph-adversarial`). Not yet run on the full `.mat`.
 - 2026-11-11 (branch feat/edge-scorer): graph-only track started (D11, D12). The label-free feature scorer is near chance on R-T-R / R-S-R (edge AUC ~0.51), so reweighting by it gives no gain. Noisy-oracle curve (.mat, stratified, 2 seeds): repair pays off from edge AUC ~0.7 and WeightedSAGE matches raw-graph CatBoost at ~0.8, so that is the bar for the text scorer. Open: pivot decision, self-training rerun.

@@ -81,7 +81,9 @@ def scorer_curve(tag):
     df["scorer"] = df["weights"].str.removeprefix(f"{source}_")
     auc = {}
     for s in df["scorer"].unique():
-        hs = [read(f"homophily_weighted_{source}_{s}.csv")] + [pd.read_csv(f) for f in sorted(TAB.glob(f"homophily_weighted_{source}_{s}_w*.csv"))]
+        # per-seed scorers (fit on one seed's training waves) only belong to the wave protocol
+        per_seed_files = sorted(TAB.glob(f"homophily_weighted_{source}_{s}_w*.csv")) if tag.endswith("waves") else []
+        hs = [pd.read_csv(f) for f in per_seed_files] or [read(f"homophily_weighted_{source}_{s}.csv")]
         hs = [h for h in hs if h is not None]
         if hs:
             auc[s] = float(np.mean([np.average(h["edge_auc_same_vs_cross"], weights=h["edges"]) for h in hs]))
