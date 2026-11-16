@@ -27,7 +27,7 @@ def read(name):
 
 def headline(tag):
     """Raw vs refined AUC-PR per test window, per model (mean ± std over seeds)."""
-    parts = [read(f"results_{tag}_{gname}.csv") for gname in ["raw_graph", "refined_soft", "refined_hard_tau0.5"]]
+    parts = [read(f"results_{tag}_{gname}.csv") for gname in ["raw_graph", "refined_soft", "refined_softrank", "refined_hard_tau0.5"]]
     parts = [p for p in parts if p is not None]
     if not parts:
         return
@@ -91,6 +91,8 @@ def scorer_curve(tag):
     df = per_seed(df, ["model", "scorer"])
     df["edge_auc"] = df["scorer"].map(auc)
     t = df.groupby(["model", "scorer", "edge_auc"])["auc_pr"].agg(["mean", "std", "count"]).reset_index()
+    if t.empty:          # e.g. the text track: refined_* results but no scorer sweep to place them on
+        return
     base = per_seed(base, ["model"])
     raw = base[base["seed"].isin(df["seed"].unique())].groupby("model")["auc_pr"].mean()
     t["raw_graph_auc_pr"] = t["model"].map(raw)

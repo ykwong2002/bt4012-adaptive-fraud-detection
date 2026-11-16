@@ -51,11 +51,14 @@ def main():
     g = load_graph(processed_path(source, args.smoke))
     proc = ROOT / cfg["paths"]["processed_dir"]
     rows = []
-    for f in sorted(proc.glob(f"edge_scores_{tag}_*.npz")):
+    # edge_scores_<tag>.npz is the distilled text scorer (scripts/05); edge_scores_<tag>_<name>.npz are
+    # the graph-only scorers (scripts/05b)
+    for f in sorted(proc.glob(f"edge_scores_{tag}.npz")) + sorted(proc.glob(f"edge_scores_{tag}_*.npz")):
         z = np.load(f)
         if not all(r in z.files and len(z[r]) == g.edges[r].shape[1] for r in g.edges):
             continue
-        rows += centred_rows(f.stem.removeprefix(f"edge_scores_{tag}_"), g.edges, {r: z[r] for r in g.edges}, g.y)
+        name = "text_distilled" if f.stem == f"edge_scores_{tag}" else f.stem.removeprefix(f"edge_scores_{tag}_")
+        rows += centred_rows(name, g.edges, {r: z[r] for r in g.edges}, g.y)
     df = pd.DataFrame(rows)
     TAB.mkdir(parents=True, exist_ok=True)
     df.to_csv(TAB / f"edge_auc_centred_{tag}.csv", index=False)

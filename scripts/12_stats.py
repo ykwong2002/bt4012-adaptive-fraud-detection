@@ -40,8 +40,14 @@ def paired_summary(pairs: pd.DataFrame, by: list[str], col: str = "diff") -> pd.
 
 
 def rewiring(tag: str) -> pd.DataFrame | None:
-    base_p = TAB / f"results_{tag}_waves_raw_graph.csv"
-    files = sorted(TAB.glob(f"results_{tag}_waves_*_softrank.csv"))
+    """Two layouts: the .mat scorer sweep under waves (results_<tag>_waves_<scorer>_softrank.csv vs
+    results_<tag>_waves_raw_graph.csv, one row per scorer) and the text track on a dated graph
+    (results_<tag>_refined_<mode>.csv vs results_<tag>_raw_graph.csv, one row per rewiring mode)."""
+    if (TAB / f"results_{tag}_waves_raw_graph.csv").exists():
+        base_p, files, label = TAB / f"results_{tag}_waves_raw_graph.csv", sorted(TAB.glob(f"results_{tag}_waves_*_softrank.csv")), "weights"
+    else:
+        base_p, files, label = TAB / f"results_{tag}_raw_graph.csv", sorted(TAB.glob(f"results_{tag}_refined_*.csv")), "graph"
+    files = [f for f in files if not f.name.endswith("_summary.csv")]
     if not base_p.exists() or not files:
         return None
     base = pd.read_csv(base_p)
@@ -50,7 +56,7 @@ def rewiring(tag: str) -> pd.DataFrame | None:
     for f in files:
         d = pd.read_csv(f)
         d = d[d["fold"].str.startswith("test_w")]
-        scorer = d["weights"].iloc[0].removeprefix(f"{tag}_")
+        scorer = str(d[label].iloc[0]).removeprefix(f"{tag}_")
         j = d.merge(base, on=["model", "seed", "fold"], suffixes=("", "_raw"))
         j["diff"] = j["auc_pr"] - j["auc_pr_raw"]; j["scorer"] = scorer
         out.append(j[["model", "scorer", "seed", "fold", "diff"]])
@@ -77,7 +83,8 @@ def main():
     a = p.parse_args()
     r = rewiring(a.tag)
     if r is not None:
-        r.to_csv(TAB / f"stats_rewiring_{a.tag}_waves.csv", index=False)
+        suffix = "_waves" if (TAB / f"results_{a.tag}_waves_raw_graph.csv").exists() else ""
+        r.to_csv(TAB / f"stats_rewiring_{a.tag}{suffix}.csv", index=False)
         print(r.round(4).to_string(index=False))
     suffix = f"lvl{a.level}{'' if float(a.noise) == 0.1 else f'_noise{a.noise}'}"
     lp = loop(a.tag, suffix)

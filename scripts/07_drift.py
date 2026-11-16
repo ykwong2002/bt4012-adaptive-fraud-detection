@@ -22,6 +22,9 @@ def main():
     p.add_argument("--tau", type=float, default=0.5)
     p.add_argument("--model", default="wsage", help="incumbent whose AUC-PR is the labelled comparator")
     p.add_argument("--degrade-rel", type=float, default=0.10, help="relative AUC-PR drop vs val that counts as degradation")
+    p.add_argument("--same-window", action="store_true",
+                   help="robustness check (decisions D16): h_text over neighbours from the same window only, so a later "
+                        "review does not average over more neighbours than an earlier one; outputs get a _samewin suffix")
     args = p.parse_args()
     cfg, dcfg = load_config("base"), load_config("drift")
     source = resolve_source(args.source)
@@ -41,14 +44,21 @@ def main():
     scores = None
     if es.exists():
         z = np.load(es); scores = {r: z[r] for r in g.edges}
-    sig, thr, m, h_raw, h_ref = run_monitor(g, w, plan["train"], dcfg, names, scores, llm,
+    g_mon = g
+    if args.same_window:
+        from camo.data.load_mat import Graph
+        same = {r: w[e[0]] == w[e[1]] for r, e in g.edges.items()}
+        g_mon = Graph(g.x, g.y, {r: e[:, same[r]] for r, e in g.edges.items()}, g.dates, g.meta, g.node_table)
+        scores = None if scores is None else {r: s[same[r]] for r, s in scores.items()}
+        tag = f"{tag}_samewin"
+    sig, thr, m, h_raw, h_ref = run_monitor(g_mon, w, plan["train"], dcfg, names, scores, llm,
                                             REVIEW_FIELDS + ["llm_unscored"], args.tau)
     if h_raw is not None:
         np.save(proc / f"h_text_{tag}.npy", np.vstack([h_raw, h_ref]))
     print("calibrated thresholds (leave-one-training-window-out):"); print(thr.round(4).to_string(index=False))
 
     # labelled comparator: incumbent AUC-PR per window from scripts/06 (raw graph)
-    res_path = TAB / f"results_{tag}_raw_graph.csv"
+    res_path = TAB / f"results_{tag.removesuffix('_samewin')}_raw_graph.csv"
     comp = None
     if res_path.exists():
         res = pd.read_csv(res_path)
