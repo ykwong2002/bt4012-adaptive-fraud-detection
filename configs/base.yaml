@@ -3,13 +3,15 @@ paths:
   mat_zip_url: https://github.com/YingtongDou/CARE-GNN/raw/master/data/YelpChi.zip
   mat_zip_sha256: 3a31296b951e6c8158dddb783ff2c62709fa987d106bbe21e59f8e119053cec3
   mat_dir: data/raw/yelpchi_mat
-  raw_dir: data/raw/yelpchi_raw
+  raw_dir: data/raw/yelpzip_raw     # Rayana-format release (metadata + reviewContent); see data/README.md
   processed_dir: data/processed
   llm_dir: data/llm
   outputs_dir: outputs
 
 graph:
   max_reviews_per_product: 800     # GraphConsis filter that yields the 45,954-node graph
+  raw_release: yelpzip             # yelpchi | yelpzip (decisions D19); published counts below are YelpChi's
+  raw_max_reviews: 48000           # yelpzip: whole products, largest first under the cap, until this many reviews
   published:
     n_nodes: 45954
     n_products: 182

@@ -2,6 +2,88 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D20 2026-11-16 Text-track results on the YelpZip slice; YelpZip becomes the headline dataset
+The full proposal pipeline (04 → 05 → 06 raw vs refined → 07 → 08 → 09, `make raw-all`) ran on the
+D19 slice: 47,512 review fields and 18,480 pair judgements from `claude-haiku-5-5` (Message Batches,
+0 errors, ≈ US$6.50), strictly temporal equal-count windows (train 0–2, val 3, test 4–7), 5 seeds for
+06/08 and 3 for 09. Every number below is in `outputs/tables/*_raw*.csv`; the decision is to frame the
+report on YelpZip (the proposal as written) with the `.mat` results (D11–D17) as supporting evidence.
+
+(a) *Reconstruction.* The distilled scorer tracks the LLM at Spearman 0.66 on held-out pairs, above
+the LLM's own swapped-order test-retest of 0.59 (`distil_metrics_raw.csv`), so distillation loses
+nothing; the limit is the judgement itself. Edge AUC of the scorer (`edge_auc_centred_raw.csv`): 0.57
+global but **0.50 fraud-centred** on R-S-R / R-T-R, below the ~0.6 bar the `.mat` noisy-oracle curve
+sets (D12, D15). Accordingly (`stats_rewiring_raw.csv`, paired on seed, 5 seeds × 4 windows): CatBoost
+gains +0.0054 [0.0033, 0.0076] with softrank and +0.0057 [0.0039, 0.0075] with hard pruning (90 % /
+80 % of seed-window pairs positive, largest in the most drifted windows); WeightedSAGE, CARE-static
+and the AE are unchanged (intervals include 0). Real but small, and the two datasets agree on why.
+Baselines drift for real: AUC-PR falls 0.27 → 0.16 from window 4 to 7 for every model.
+
+(b) *Drift monitor.* The label-free text-consistency signal (`h_text_raw`, D5) flags every degraded
+test window with 0 false alarms and latency 0 (`drift_summary_raw.csv`); the PIT-feature monitor flags
+none. It survives the same-window control that invalidated the `.mat` monitor (D16): all four windows
+still flagged, alarm from window 5 (`drift_summary_raw_samewin.csv`). Strongest single result.
+
+(c) *Label-scarce response to natural drift* (`08_selftrain.py`, raw and refined graph, 5 seeds). The
+alarm fires at window 4 in every seed, so the loop retrains at windows 4–6. Headroom is small: even
+the oracle retrained on true labels gains only +0.018 AUC-PR over the never-retrained incumbent
+(0.190 vs 0.172), and the no-pseudo-label control is within ±0.004 of it. No variant adds anything
+reliable over the control (`stats_selftrain_raw_raw_graph.csv`: all +0.002 [−0.005, 0.008],
+balanced_loss +0.003 [−0.004, 0.011], naive 0.000, per_class −0.003 [−0.011, 0.005], prior_match
+−0.003 [−0.009, 0.003]); the bootstrap promotion rule (D17) blocked 87–100 % of challengers (mean win
+probability 0.25–0.49), which is the rule doing its job. Bias audit (professor Q2) replicates `.mat`
+on real data: naive pseudo-labels end at **0.07 %** positives and balanced_loss at **1.1 %** against a
+10.5 % training prior (collapse in every seed); per_class 10.3 %, prior_match and all 10.5 %. The
+YelpZip drift is a concept shift that more labels of the same kind barely fix, so the honest statement
+is "the guard prevents harm; the gain is not there to be had here".
+
+(d) *Camouflage injection* (`09_adversarial.py --recover`, 3 seeds, 5 / 10 / 20 % of each test
+window). The injected reviews are, by design, perturbed legitimate text posted by established
+legitimate users with 4–5 stars (`adversarial/inject.py`). The incumbent catches **none** of them:
+injected recall@10 % ≤ 0.0006 at every level (chance 0.10); AUROC falls 0.68 → 0.52 / 0.45 / 0.37
+because the injected fraud is ranked *below* the legit reviews; AUC-PR on all nodes rises 0.18 → 0.20
+only because the prevalence rises 0.10 → 0.25 (random-ranker baseline), so across levels AUROC and
+injected recall are the comparable numbers. Raw and refined graph are identical under attack. The
+text-consistency monitor cannot see this attack: mean h_text moves 0.4985 → 0.4924 while natural drift
+already alarms in all four test windows at level 0 (PSI 0.07 → 0.12, KS 0.10 → 0.14 with injection),
+so no latency is measurable on YelpZip; injection latency comes from `.mat` (D16). Recovery at 20 %: 0
+of 9 retrains promoted (win probability 0.00–0.69), deployed = incumbent 0.187, control 0.188, while
+the oracle retrained with the injected nodes' labels reaches **0.775**: the pattern is trivially
+learnable once labelled and invisible until then. The EM label-shift estimate collapses to 0.0001
+against a true pool prior of 0.19–0.22. Practical reading: against camouflage that copies legitimate
+text and user history, a label-free loop does not recover; the 200–400 probe labels an analyst
+provides per window should also go into training (active learning), not only into promotion.
+
+Rejected: reporting AUC-PR across injection levels (prevalence artefact); calling the YelpZip
+self-training result a failure of the method rather than of the headroom (the oracle bounds it);
+dropping the `.mat` track (it still supplies the scorer-quality bar and the only measurable injection
+latency). Limitations: one slice of 71 restaurants from a public mirror; 3 seeds for 09; our injection
+is one attack model; the LLM judge is a single model (a second-model check with Gemma scores from a
+teammate is pending).
+
+## D19 2026-11-16 The text track runs on a YelpChi-sized slice of YelpZip; YelpChi graph-only stays as the fallback
+The YelpChi raw release never arrived (D18), but YelpZip (Rayana & Akoglu 2015: same authors, same
+Yelp-filter labels, same `metadata` + `reviewContent` format, review text and real dates) is publicly
+mirrored (`data/README.md`). `load_raw` joined all 608,598 reviews with no code change. The full release
+is too large for R-S-R (one restaurant has 7,378 reviews), so `02_build_graph.py` keeps, after the
+800-review cap, whole restaurants from the largest down until 48,000 reviews
+(`graph.raw_max_reviews`; `select_products`): 71 restaurants, 47,532 reviews, 35,812 users, 10.2 %
+fraud, 2005-03 → 2015-01, R-U-R 25,119 / R-T-R 290,324 / R-S-R 5,260,757. Whole restaurants keep the
+product × star and product × month blocks intact (a random review sample would not); point-in-time
+features are computed on the whole release first so no user or product history is cut. The slice shows
+the same camouflage signature as YelpChi, stronger: fraud node homophily 0.13 on R-S-R / R-T-R vs 0.90
+for legit, 0.93 on R-U-R; 62 % of reviews have no R-U-R neighbour; fraud rate per equal-count window
+drifts 0.09 → 0.12 → 0.09.
+Plan: run the proposal's text track (04 → 05 → 06 raw vs refined → 07 → 08 → 09) on this slice in
+parallel with the report, hard cutoff Wednesday 18 Nov night. If it completes, the report is framed on
+YelpZip (the proposal as written) with the `.mat` noisy-oracle curve and bias audit as supporting
+results; if partial, each result states its dataset; if it fails, D18 stands. Reported numbers from the
+two graphs are never mixed in one table.
+Rejected: YelpNYC (no public mirror found); Amazon CARE-GNN data rebuilt from public reviews (fraud
+labels are a helpful-vote heuristic); switching the whole report to YelpZip before results exist
+(no fallback with four days left). Caveat for the report: the files come from a public mirror of the
+ODDS release, not from the authors; cite Rayana & Akoglu 2015 and the ODDS page as the readme asks.
+
 ## D18 2026-11-15 The graph-only track is final; the claim is restated around what it can show
 The raw review text and dates (Rayana & Akoglu 2015) are no longer obtainable, so the pivot below is
 taken for good: every reported number comes from the public `YelpChi.mat` under random arrival waves

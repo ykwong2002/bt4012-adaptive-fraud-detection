@@ -1,0 +1,2 @@
+monitor,alarm_w3,alarm_w4,alarm_w5,alarm_w6,alarm_w7,n_flagged,n_windows,latency_first_degraded,latency_first_alarm,latency_latency,latency_false_alarms,spearman_psi_vs_aucpr
+h_text_raw,False,True,True,True,True,5,5,0,0,0,0,-0.8

@@ -26,14 +26,20 @@ from camo.llm.mock import mock_pair_score, mock_review_fields
 
 
 def client():
+    """Anthropic client. Credentials come from `.env` (ANTHROPIC_API_KEY) or from whatever the SDK
+    resolves on its own (env vars, an `ant auth login` profile); the key itself never enters the repo."""
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("ANTHROPIC_API_KEY not set; copy .env.example to .env (or use --mock for smoke runs)")
     import anthropic
 
-    return anthropic.Anthropic()
+    c = anthropic.Anthropic()
+    try:
+        c.models.list(limit=1)
+    except anthropic.AuthenticationError as e:
+        raise SystemExit(f"no usable Anthropic credential: {e}. Put ANTHROPIC_API_KEY in .env or run `ant auth login` "
+                         "(or use --mock for smoke runs)") from e
+    return c
 
 
 def run_stage(args, requests, cache, row_fn, model, state_path, mock_fn=None):
@@ -71,6 +77,8 @@ def main():
     p.add_argument("--dry-run", action="store_true"); p.add_argument("--limit", type=int, default=20)
     p.add_argument("--submit", action="store_true"); p.add_argument("--yes", action="store_true")
     p.add_argument("--collect", action="store_true"); p.add_argument("--wait", action="store_true")
+    p.add_argument("--retest-only", action="store_true",
+                   help="pairs stage: only the swapped test-retest subset that is not cached yet (nothing else)")
     p.add_argument("--mock", action="store_true")
     args = p.parse_args()
     cfg, rcfg = load_config("base"), load_config("reconstruction")
@@ -109,7 +117,14 @@ def main():
         have = cache.have()
         todo = pairs[[k not in have for k in keys]]
         n_retest = 10 if args.smoke else rcfg["llm"]["n_retest_pairs"]
-        reqs = score_pairs.build_pair_requests(todo, nt, model, n_retest=n_retest if len(todo) == len(pairs) else 0)
+        # the test-retest subset is a fixed draw from the whole sample (seed 0), so it is the same
+        # whether or not some forward pairs are already cached; only its uncached swapped items are sent
+        retest = pairs.iloc[np.random.default_rng(0).choice(len(pairs), min(n_retest, len(pairs)), replace=False)]
+        retest = retest[[(r.relation, int(rid[r.u_node]), int(rid[r.v_node]), 1, ver) not in have for r in retest.itertuples()]]
+        if args.retest_only:
+            reqs = score_pairs.build_pair_requests(retest.iloc[0:0], nt, model) + score_pairs.swapped_requests(retest, nt, model)
+        else:
+            reqs = score_pairs.build_pair_requests(todo, nt, model) + score_pairs.swapped_requests(retest, nt, model)
         txt = nt.set_index("review_id")["text"]; rng = np.random.default_rng(0)
 
         def mock_fn(r):

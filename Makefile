@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-loop-hard graph-all figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-loop-hard graph-all raw-all figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -82,6 +82,25 @@ graph-loop-hard:
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2 --noise $(HARD_NOISE)
 	$(PY) scripts/12_stats.py --tag mat --level 0.2 --noise $(HARD_NOISE)
 	$(PY) scripts/10_figures.py
+
+# text track on the raw release (YelpZip slice, D19): every reported `raw` number and figure, given
+# complete LLM caches in data/llm/ (04 --submit was run and all batches have ended)
+raw-all:
+	$(PY) scripts/02_build_graph.py --source raw
+	$(PY) scripts/03_eda.py --source raw
+	$(PY) scripts/04_llm_score.py --source raw --collect
+	$(PY) scripts/05_distil_edges.py --source raw
+	$(PY) scripts/06_train.py --source raw
+	for m in soft softrank; do $(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode $$m; done
+	$(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode hard --tau 0.5
+	$(PY) scripts/05c_edge_diagnostics.py --source raw
+	$(PY) scripts/07_drift.py --source raw
+	$(PY) scripts/07_drift.py --source raw --same-window
+	$(PY) scripts/08_selftrain.py --source raw
+	$(PY) scripts/08_selftrain.py --source raw --weights data/processed/edge_scores_raw.npz
+	$(PY) scripts/09_adversarial.py --source raw --recover
+	$(PY) scripts/12_stats.py --tag raw
+	$(PY) scripts/10_figures.py --tag raw
 
 # every reported number and figure (graph-only track, D18), from a fresh clone
 graph-all: data

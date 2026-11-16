@@ -9,6 +9,22 @@ def test_filter_drops_big_products(raw_mini):
     assert len(kept) < len(raw_mini)
 
 
+def test_select_products_keeps_whole_largest_products(raw_mini):
+    """D19: the slice is whole products, largest first under the cap, within the review budget."""
+    from camo.data.graph_build import select_products
+
+    capped = filter_products(raw_mini, 60)
+    sizes = capped.groupby("product_id").size().sort_values(ascending=False)
+    budget = int(sizes.iloc[:2].sum())                      # exactly the two largest products
+    sub = select_products(raw_mini, 60, budget)
+    assert set(sub["product_id"]) == set(sizes.index[:2])
+    assert len(sub) == budget
+    for p in sizes.index[:2]:                               # whole products, no reviews dropped inside
+        assert (sub["product_id"] == p).sum() == sizes[p]
+    assert len(select_products(raw_mini, 60, 0)) == len(capped)     # 0 = no slicing
+    assert select_products(raw_mini, 60, budget).index.equals(sub.index)   # deterministic
+
+
 def test_relations_match_bruteforce(raw_mini):
     df = filter_products(raw_mini, 60).sort_values(["date", "review_id"]).reset_index(drop=True)
     e = build_relations(df)

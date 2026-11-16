@@ -42,6 +42,19 @@ def filter_products(df: pd.DataFrame, max_reviews_per_product: int = 800) -> pd.
     return df[counts <= max_reviews_per_product]
 
 
+def select_products(df: pd.DataFrame, max_reviews_per_product: int = 800, max_reviews: int = 0) -> pd.DataFrame:
+    """YelpChi-sized slice of a bigger release (YelpZip, YelpNYC; decisions D19): after the per-product
+    cap, keep whole products, largest first, while the running total stays within `max_reviews`
+    (0 = keep everything). Whole products keep the R-S-R / R-T-R blocks intact, which a random review
+    sample would destroy; ties on size break on product id so the slice is deterministic."""
+    df = filter_products(df, max_reviews_per_product)
+    if not max_reviews:
+        return df
+    sizes = df.groupby("product_id").size().reset_index(name="n").sort_values(["n", "product_id"], ascending=[False, True])
+    keep = sizes.loc[sizes["n"].cumsum() <= max_reviews, "product_id"]
+    return df[df["product_id"].isin(keep)]
+
+
 def build_relations(df: pd.DataFrame) -> dict[str, np.ndarray]:
     node = np.arange(len(df))
     month = df["date"].dt.to_period("M").astype(str)
@@ -53,9 +66,10 @@ def build_relations(df: pd.DataFrame) -> dict[str, np.ndarray]:
 
 
 def build_graph(raw: pd.DataFrame, max_reviews_per_product: int = 800,
-                features: pd.DataFrame | None = None) -> Graph:
-    """`features` must be a DataFrame indexed like `raw` (e.g. from compute_pit_features(raw))."""
-    df = filter_products(raw, max_reviews_per_product)
+                features: pd.DataFrame | None = None, max_reviews: int = 0) -> Graph:
+    """`features` must be a DataFrame indexed like `raw` (e.g. from compute_pit_features(raw)); they
+    are computed on the full release before the product slice, so a review's history is complete."""
+    df = select_products(raw, max_reviews_per_product, max_reviews)
     df = df.sort_values(["date", "review_id"], kind="stable")
     orig_index = df.index
     df = df.reset_index(drop=True)
@@ -66,7 +80,8 @@ def build_graph(raw: pd.DataFrame, max_reviews_per_product: int = 800,
     else:
         x = np.zeros((len(df), 0), dtype=np.float32)
     meta = {"source": "raw", "n_products": int(df["product_id"].nunique()),
-            "n_users": int(df["user_id"].nunique()), "max_reviews_per_product": max_reviews_per_product}
+            "n_users": int(df["user_id"].nunique()), "max_reviews_per_product": max_reviews_per_product,
+            "max_reviews": max_reviews, "n_reviews_release": int(len(raw))}
     return Graph(x.astype(np.float32), df["label"].to_numpy().astype(np.int64), edges,
                  df["date"].to_numpy().astype("datetime64[D]"), meta, df)
 

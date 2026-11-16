@@ -7,11 +7,14 @@ individual (seed, wave) pairs in which the difference is positive.
 
   * rewiring:  AUC-PR(refined graph, scorer s) - AUC-PR(raw graph), per model, under waves
   * loop:      deployed - control and deployed - incumbent, per self-training variant, on the waves
-               after the first retrain (attack scenario)
+               after the first retrain (attack scenario, scripts/11 on .mat)
+  * selftrain: the same two differences for the text track (scripts/08 on a dated graph, raw and
+               refined), on the windows after the first retrain
 
   python scripts/12_stats.py --tag mat [--level 0.2] [--noise 0.1]
-Writes outputs/tables/stats_rewiring_<tag>_waves.csv and stats_loop_<tag>_lvl<level>[_noise<noise>].csv
-(the suffix matches the loop run's tables from scripts/11).
+  python scripts/12_stats.py --tag raw
+Writes outputs/tables/stats_rewiring_<tag>[_waves].csv, stats_loop_<tag>_lvl<level>[_noise<noise>].csv
+(the suffix matches the loop run's tables from scripts/11) and stats_selftrain_<tag>_<graph>.csv.
 """
 from __future__ import annotations
 
@@ -40,8 +43,14 @@ def paired_summary(pairs: pd.DataFrame, by: list[str], col: str = "diff") -> pd.
 
 
 def rewiring(tag: str) -> pd.DataFrame | None:
-    base_p = TAB / f"results_{tag}_waves_raw_graph.csv"
-    files = sorted(TAB.glob(f"results_{tag}_waves_*_softrank.csv"))
+    """Two layouts: the .mat scorer sweep under waves (results_<tag>_waves_<scorer>_softrank.csv vs
+    results_<tag>_waves_raw_graph.csv, one row per scorer) and the text track on a dated graph
+    (results_<tag>_refined_<mode>.csv vs results_<tag>_raw_graph.csv, one row per rewiring mode)."""
+    if (TAB / f"results_{tag}_waves_raw_graph.csv").exists():
+        base_p, files, label = TAB / f"results_{tag}_waves_raw_graph.csv", sorted(TAB.glob(f"results_{tag}_waves_*_softrank.csv")), "weights"
+    else:
+        base_p, files, label = TAB / f"results_{tag}_raw_graph.csv", sorted(TAB.glob(f"results_{tag}_refined_*.csv")), "graph"
+    files = [f for f in files if not f.name.endswith("_summary.csv")]
     if not base_p.exists() or not files:
         return None
     base = pd.read_csv(base_p)
@@ -50,11 +59,29 @@ def rewiring(tag: str) -> pd.DataFrame | None:
     for f in files:
         d = pd.read_csv(f)
         d = d[d["fold"].str.startswith("test_w")]
-        scorer = d["weights"].iloc[0].removeprefix(f"{tag}_")
+        scorer = str(d[label].iloc[0]).removeprefix(f"{tag}_")
         j = d.merge(base, on=["model", "seed", "fold"], suffixes=("", "_raw"))
         j["diff"] = j["auc_pr"] - j["auc_pr_raw"]; j["scorer"] = scorer
         out.append(j[["model", "scorer", "seed", "fold", "diff"]])
     return paired_summary(pd.concat(out), ["model", "scorer"])
+
+
+def selftrain(tag: str, graph: str) -> pd.DataFrame | None:
+    """Text track (scripts/08 on a dated graph): deployed - control and deployed - incumbent per
+    variant on the windows after the first retrain (control_ap present)."""
+    p = TAB / f"selftrain_windows_{tag}_{graph}.csv"
+    if not p.exists():
+        return None
+    w = pd.read_csv(p)
+    w = w[w["control_ap"].notna()]
+    if w.empty:
+        return None
+    out = []
+    for ref in ("control", "incumbent"):
+        d = w[["variant", "seed", "window"]].copy()
+        d["diff"] = w["deployed_ap"] - w[f"{ref}_ap"]; d["vs"] = ref
+        out.append(d)
+    return paired_summary(pd.concat(out), ["vs", "variant"])
 
 
 def loop(tag: str, suffix: str) -> pd.DataFrame | None:
@@ -77,8 +104,14 @@ def main():
     a = p.parse_args()
     r = rewiring(a.tag)
     if r is not None:
-        r.to_csv(TAB / f"stats_rewiring_{a.tag}_waves.csv", index=False)
+        suffix = "_waves" if (TAB / f"results_{a.tag}_waves_raw_graph.csv").exists() else ""
+        r.to_csv(TAB / f"stats_rewiring_{a.tag}{suffix}.csv", index=False)
         print(r.round(4).to_string(index=False))
+    for graph in ("raw_graph", "refined_soft"):
+        st = selftrain(a.tag, graph)
+        if st is not None:
+            st.to_csv(TAB / f"stats_selftrain_{a.tag}_{graph}.csv", index=False)
+            print(f"-- self-training on {graph}"); print(st.round(4).to_string(index=False))
     suffix = f"lvl{a.level}{'' if float(a.noise) == 0.1 else f'_noise{a.noise}'}"
     lp = loop(a.tag, suffix)
     if lp is not None:
