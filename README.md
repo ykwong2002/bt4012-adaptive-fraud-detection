@@ -37,8 +37,26 @@ No API key is needed for any reported result.
 
 ## Reproduce
 
-`make graph-all` runs every step below in order (several hours on a laptop CPU; the scorer curve and
-the loop dominate). Each step can also be run on its own:
+Two tracks. **YelpZip text track** (headline, decisions D19–D20): `make raw-all` runs every step below
+in order from the committed LLM caches (`data/llm/*.parquet`; no API call is made unless the cache is
+incomplete), about 3 h on a laptop CPU. Needs the raw release under `data/raw/yelpzip_raw/`
+(`data/README.md`).
+
+| step | command | output |
+|---|---|---|
+| build the YelpZip slice (strict text join, point-in-time features, 48k-review slice) | `uv run python scripts/02_build_graph.py --source raw` | `data/processed/graph_raw.npz` |
+| EDA | `uv run python scripts/03_eda.py --source raw` | `eda_*_raw.csv`, `outputs/figures/eda_*_raw.png` |
+| LLM review fields + pair judgements (cached; `--dry-run` quotes the cost of anything missing) | `uv run python scripts/04_llm_score.py --source raw --collect` | `data/llm/*.parquet` |
+| distilled edge scorer + diagnostics (D4, D15) | `uv run python scripts/05_distil_edges.py --source raw`, `05c_edge_diagnostics.py --source raw` | `distil_metrics_raw.csv`, `edge_auc_centred_raw.csv`, `data/processed/edge_scores_raw.npz` |
+| 4 models × 5 seeds, raw graph and soft / softrank / hard refined graphs | `uv run python scripts/06_train.py --source raw [--weights data/processed/edge_scores_raw.npz --mode soft\|softrank\|hard --tau 0.5]` | `results_raw_*.csv` |
+| drift monitor (+ same-window control) | `uv run python scripts/07_drift.py --source raw [--same-window]` | `drift_*_raw*.csv` |
+| alarm-triggered self-training + bias audit, raw and refined graph | `uv run python scripts/08_selftrain.py --source raw [--weights data/processed/edge_scores_raw.npz]` | `selftrain_*_raw_*.csv` |
+| camouflage injection with recovery | `uv run python scripts/09_adversarial.py --source raw --recover` | `adversarial_*_raw.csv` |
+| paired intervals; figures | `uv run python scripts/12_stats.py --tag raw`, `10_figures.py --tag raw` | `stats_*_raw*.csv`, `outputs/figures/fig_*_raw*.png` |
+
+**YelpChi graph-only track** (supporting, D11–D17): `make graph-all` runs every step below in order
+(several hours on a laptop CPU; the scorer curve and the loop dominate). Each step can also be run on
+its own:
 
 | step | command | output |
 |---|---|---|
@@ -54,8 +72,8 @@ Tables land in `outputs/tables/`. Every script writes `outputs/runs/<name>/run.j
 config hash, seed and wall time. `make all SMOKE=1` runs the pipeline on a 2k-node subsample in minutes.
 
 Not part of the reported results: `scripts/09b_graph_adversarial.py` (static injection into test waves,
-`make graph-adversarial`) and the text track (`scripts/04`, `05`, `07`–`09`, `--source raw`), which
-needs the unavailable raw files; `--smoke --mock` exercises it on the fixture.
+`make graph-adversarial`). `make all SMOKE=1 --mock` exercises the text track on the synthetic fixture
+without the raw files or an API key.
 
 ## Layout
 

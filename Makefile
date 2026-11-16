@@ -93,11 +93,14 @@ raw-all:
 	$(PY) scripts/06_train.py --source raw
 	for m in soft softrank; do $(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode $$m; done
 	$(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode hard --tau 0.5
+	$(PY) scripts/05c_edge_diagnostics.py --source raw
 	$(PY) scripts/07_drift.py --source raw
+	$(PY) scripts/07_drift.py --source raw --same-window
 	$(PY) scripts/08_selftrain.py --source raw
 	$(PY) scripts/08_selftrain.py --source raw --weights data/processed/edge_scores_raw.npz
 	$(PY) scripts/09_adversarial.py --source raw --recover
-	$(PY) scripts/10_figures.py
+	$(PY) scripts/12_stats.py --tag raw
+	$(PY) scripts/10_figures.py --tag raw
 
 # every reported number and figure (graph-only track, D18), from a fresh clone
 graph-all: data

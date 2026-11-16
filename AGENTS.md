@@ -12,19 +12,26 @@ Guidelines + rubric: `docs/guidelines.pdf`.
 
 **Setting.** Fraudsters camouflage by linking to legitimate accounts, so GNN neighbourhood averaging hides
 them. The proposal planned to repair the graph with LLM text evidence. The YelpChi raw text never
-arrived, so the finished results are on the public `YelpChi.mat` graph (**D18**, below); since 16 Nov the
-text track also runs on a YelpChi-sized slice of **YelpZip** (same authors/labels/format, with text and
-dates, **D19**) — if it completes by Wed 18 Nov night it becomes the headline dataset. The `.mat` claim
-has two parts:
+arrived (**D18**); the full text track therefore ran on a YelpChi-sized slice of **YelpZip** (same
+authors, labels and format, with text and real dates, **D19**, results **D20**), which is the headline
+dataset of the report. The public `YelpChi.mat` graph under arrival waves (D11–D17) is the supporting
+track. The claim, in four parts (numbers in `docs/decisions.md` D20 and D16/D17):
 
-1. **When does structure repair pay?** A noisy-oracle edge scorer sets the bar (gain from edge AUC
-   ~0.6–0.7; WeightedSAGE matches raw-graph CatBoost at ~0.85). The right yardstick is *fraud-centred*
-   edge AUC, not global (D15). None of our label-free scorers (feature, cosine, R-U-R profile) clears
-   the bar on `.mat`: a negative result with a usable threshold.
-2. **Can a label-free monitor + label-scarce retraining respond to camouflage without collapsing to the
-   normal class?** 0 false alarms on clean waves; 20 % injection alarmed one wave late; per_class /
-   prior_match self-training recover +0.03 AUC-PR over a no-pseudo-label control; naive and
-   balanced-loss self-training collapse toward legit (professor Q2). The monitor misses 5–10 % injection.
+1. **Reconstruction pays a little, and we can say why.** On YelpZip the LLM-distilled scorer gives
+   CatBoost +0.005 AUC-PR (interval excludes 0), nothing for the GNNs. Its fraud-centred edge AUC is
+   0.50, below the ~0.6 bar the `.mat` noisy-oracle curve sets; the right yardstick is fraud-centred,
+   not global, edge AUC (D15). Two datasets, one explanation.
+2. **The label-free text-consistency monitor works on real drift.** It flags every degraded test window
+   with 0 false alarms and latency 0 while the feature monitor flags none, and survives the same-window
+   control. On `.mat` it alarms one wave after a 20 % injection and misses 5–10 %.
+3. **Confidence-based self-training does collapse toward the normal class, and quotas fix it**
+   (professor Q2): naive pseudo-labels end at 0.07 % (YelpZip) / 1.9 % (`.mat`) positives, per_class and
+   prior_match hold the prior. On `.mat` the non-collapsing variants recover +0.03 over the control; on
+   YelpZip's natural drift there is no headroom (oracle +0.018) and the promotion guard blocks ~90 % of
+   challengers, which is the guard working.
+4. **Camouflage that copies legitimate text and users defeats the label-free loop.** Injected recall
+   ≈ 0, the monitor cannot separate the attack from natural drift, nothing is promoted; the oracle with
+   the new labels reaches 0.78, so the labels an analyst provides must feed training, not only promotion.
 
 **We are graded on cleverness and justification, not on AUC.** Nothing off-the-shelf end to end; every
 component is ours or a clearly acknowledged re-implementation of a comparator.
@@ -121,7 +128,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
-- 2026-11-16 (feat/yelpzip-text-track, D19): YelpZip slice built (`graph_raw.npz`) and EDA done; text track to run 04 → 09 on it, hard cutoff Wed 18 Nov night; LLM scoring needs the owner's `ANTHROPIC_API_KEY` in `.env` and a `--dry-run` quote first.
+- 2026-11-16 (feat/yelpzip-text-track, D19–D20, PR #5) **text track complete on the YelpZip slice; experiments frozen; report framed on YelpZip** (`docs/report_outline.md`). `make raw-all` reproduces it from the committed LLM caches (`data/llm/*.parquet`; no API call needed). Headline tables: `stats_rewiring_raw.csv`, `drift_summary_raw*.csv`, `stats_selftrain_raw_*.csv`, `selftrain_rounds_raw_*.csv`, `adversarial_summary_raw.csv`, `adversarial_recovery_summary_raw.csv`. Never compare AUC-PR across injection levels (prevalence artefact; use AUROC and injected recall). Pending from Edison: 5-seed `.mat` tables and Gemma pair scores as a second-judge check.
 - 2026-11-16 (fix/report-prep, after merging #3 and closing #2 as superseded): review findings every report writer must respect — (1) at noise 0.1 the injected nodes are near-copies of training fraud, so the **incumbent's AUC-PR does not drop under attack** (0.85–0.86 attacked vs 0.83–0.84 clean waves): the loop shows detect → retrain → promote → audit, not recovery from damage; a harder run (`11_graph_loop.py --noise 1.0`, outputs suffixed `_noise1.0`) is pending; (2) decompose the gain: incumbent 0.862 → control 0.902 → per_class 0.932 → oracle 0.973; (3) the plain feature monitor is at least as sensitive as the structural signal on this attack (10 %: 58 % vs 17 % flagged); (4) "alarm one wave late" = `k_consecutive: 2`; (5) keep D15's "optimistic guide" caveat next to the scorer curve. New figure `fig_graph_loop_rounds_*.png` (Q2).
 - 2026-11-15 (feat/graph-waves) **experiments frozen; graph-only track final (D18).** Docs restated around the two-part claim; `make graph-all` reproduces everything.
 - Results (waves, test AUC-PR): CatBoost 0.850, WeightedSAGE 0.698, CARE-static 0.683, AE 0.210 (5 seeds). Scorer curve: repair pays from edge AUC ~0.6–0.7; no label-free scorer gives a gain whose interval excludes 0 for both models (D15, D17).

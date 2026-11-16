@@ -207,17 +207,28 @@ def selftrain(tag):
 
 
 def adversarial(tag, prefix="adversarial", by="graph"):
+    """AUC-PR on all nodes rises with the injected share of fraud (the random-ranker baseline is the
+    prevalence), so the plot shows AUC-PR next to that baseline, AUROC, and injected recall@10 % next to
+    its chance level (0.10)."""
     s = read(f"{prefix}_summary_{tag}.csv")
     if s is None:
         return
-    fig, axes = plt.subplots(1, 2, figsize=(8, 3.2))
+    d = read(f"{prefix}_{tag}.csv")
+    prev = d.assign(prev=d["n_pos"] / d["n"]).groupby("level")["prev"].mean() if d is not None and {"n_pos", "n"} <= set(d.columns) else None
+    fig, axes = plt.subplots(1, 3, figsize=(12, 3.2))
     for gname, sub in s.groupby(by):
         axes[0].plot(sub["level"], sub["auc_pr"], marker="o", label=gname)
-        axes[1].plot(sub["level"], sub["injected_recall"], marker="o", label=gname)
-    axes[0].set_title("AUC-PR vs injection volume"); axes[1].set_title("injected-node recall@10%")
+        axes[1].plot(sub["level"], sub["auroc"], marker="o", label=gname)
+        axes[2].plot(sub["level"], sub["injected_recall"], marker="o", label=gname)
+    if prev is not None:
+        axes[0].plot(prev.index, prev.values, "k--", lw=1, label="prevalence (random ranker)")
+    axes[1].axhline(0.5, color="k", ls="--", lw=1, label="chance"); axes[2].axhline(0.10, color="k", ls="--", lw=1, label="chance (top 10 %)")
+    axes[0].set_title("AUC-PR, all test nodes"); axes[1].set_title("AUROC, all test nodes"); axes[2].set_title("injected-node recall@10%")
+    axes[2].set_ylim(bottom=0)
     for ax in axes:
-        ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150); plt.close(fig)
+        ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=7)
+    fig.suptitle(f"Camouflage injection into the test windows ({tag}, mean over seeds and windows)", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
 def graph_loop(tag):

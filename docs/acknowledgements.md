@@ -1,6 +1,8 @@
 # Acknowledgements of external code, data and tools
 
-- **Data**: YelpChi (Rayana & Akoglu, KDD 2015); graph version from Dou et al. (CARE-GNN, CIKM 2020).
+- **Data**: YelpZip and YelpChi (Rayana & Akoglu, KDD 2015; ODDS library). The YelpZip raw release
+  (`metadata`, `reviewContent`) was obtained from a public mirror, not from the authors (decision D19,
+  `data/README.md`); the YelpChi graph version is from Dou et al. (CARE-GNN, CIKM 2020).
 - **Relation definitions and the >800-reviews filter** follow Liu et al. (GraphConsis, SIGIR 2020)
   and Dou et al. (2020). We re-implemented the relation builder; no code was copied.
 - **CARE-static** (`src/camo/models/care_static.py`) is our simplified re-implementation of the
@@ -12,10 +14,13 @@
   recomputed point-in-time and are not a copy of any public feature-extraction script.
 - **Libraries**: PyTorch, PyTorch Geometric, scikit-learn, CatBoost, NetworkX (Louvain),
   sentence-transformers (MiniLM embeddings), Anthropic SDK.
-- **Generative AI**: Claude (Anthropic) was used (a) as the planned text scorer inside the method
-  (`claude-haiku-5-5`, structured outputs, Message Batches); the raw review text never became
-  available, so this scorer only ran on the synthetic fixture and **no reported result uses an LLM
-  judgement**; the planned LLM-generated camouflage reviews were likewise not produced — the reported
-  injection is graph-level and uses no LLM (decisions D13, D18); (b) as a coding assistant (Claude
-  Code) for scaffolding, tests, pull-request review and drafts of the documentation. All design
-  decisions, code and results were reviewed and are explainable by the group.
+- **Generative AI**: Claude (Anthropic) was used (a) as the text judge inside the method, exactly as
+  proposed: `claude-haiku-5-5` via the Message Batches API with structured outputs scored 47,512
+  YelpZip reviews (per-review evidence fields) and 18,480 sampled review pairs (relative-fit
+  judgements, including a 500-pair swapped-order test-retest), ≈ US$6.50 in total; the judgements are
+  cached in `data/llm/*.parquet` and every reported YelpZip result uses them through the distilled edge
+  scorer (decisions D4, D7, D20). The LLM never sees fraud labels. The camouflage injection uses
+  perturbed real reviews, not LLM-generated text (D20); the `.mat` injection is graph-level (D13).
+  (b) As a coding assistant (Claude Code) for scaffolding, tests, pull-request review and drafts of
+  the documentation. All design decisions, code and results were reviewed and are explainable by the
+  group.

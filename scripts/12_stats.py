@@ -7,11 +7,14 @@ individual (seed, wave) pairs in which the difference is positive.
 
   * rewiring:  AUC-PR(refined graph, scorer s) - AUC-PR(raw graph), per model, under waves
   * loop:      deployed - control and deployed - incumbent, per self-training variant, on the waves
-               after the first retrain (attack scenario)
+               after the first retrain (attack scenario, scripts/11 on .mat)
+  * selftrain: the same two differences for the text track (scripts/08 on a dated graph, raw and
+               refined), on the windows after the first retrain
 
   python scripts/12_stats.py --tag mat [--level 0.2] [--noise 0.1]
-Writes outputs/tables/stats_rewiring_<tag>_waves.csv and stats_loop_<tag>_lvl<level>[_noise<noise>].csv
-(the suffix matches the loop run's tables from scripts/11).
+  python scripts/12_stats.py --tag raw
+Writes outputs/tables/stats_rewiring_<tag>[_waves].csv, stats_loop_<tag>_lvl<level>[_noise<noise>].csv
+(the suffix matches the loop run's tables from scripts/11) and stats_selftrain_<tag>_<graph>.csv.
 """
 from __future__ import annotations
 
@@ -63,6 +66,24 @@ def rewiring(tag: str) -> pd.DataFrame | None:
     return paired_summary(pd.concat(out), ["model", "scorer"])
 
 
+def selftrain(tag: str, graph: str) -> pd.DataFrame | None:
+    """Text track (scripts/08 on a dated graph): deployed - control and deployed - incumbent per
+    variant on the windows after the first retrain (control_ap present)."""
+    p = TAB / f"selftrain_windows_{tag}_{graph}.csv"
+    if not p.exists():
+        return None
+    w = pd.read_csv(p)
+    w = w[w["control_ap"].notna()]
+    if w.empty:
+        return None
+    out = []
+    for ref in ("control", "incumbent"):
+        d = w[["variant", "seed", "window"]].copy()
+        d["diff"] = w["deployed_ap"] - w[f"{ref}_ap"]; d["vs"] = ref
+        out.append(d)
+    return paired_summary(pd.concat(out), ["vs", "variant"])
+
+
 def loop(tag: str, suffix: str) -> pd.DataFrame | None:
     p = TAB / f"graph_loop_windows_{tag}_{suffix}.csv"
     if not p.exists():
@@ -86,6 +107,11 @@ def main():
         suffix = "_waves" if (TAB / f"results_{a.tag}_waves_raw_graph.csv").exists() else ""
         r.to_csv(TAB / f"stats_rewiring_{a.tag}{suffix}.csv", index=False)
         print(r.round(4).to_string(index=False))
+    for graph in ("raw_graph", "refined_soft"):
+        st = selftrain(a.tag, graph)
+        if st is not None:
+            st.to_csv(TAB / f"stats_selftrain_{a.tag}_{graph}.csv", index=False)
+            print(f"-- self-training on {graph}"); print(st.round(4).to_string(index=False))
     suffix = f"lvl{a.level}{'' if float(a.noise) == 0.1 else f'_noise{a.noise}'}"
     lp = loop(a.tag, suffix)
     if lp is not None:
