@@ -53,7 +53,8 @@ def headline(tag):
             ax.errorbar(s.index, s["mean"], yerr=s["std"].fillna(0), marker="o", capsize=3, label=gname)
         ax.set_title(m); ax.set_xlabel("test window"); ax.set_ylabel("AUC-PR")
         ax.legend(fontsize=8)
-    fig.suptitle("Headline: raw vs text-refined graph, temporal windows", y=1.02)
+    proto = {"waves": "random arrival waves"}.get(df["protocol"].iloc[0], "temporal windows")
+    fig.suptitle(f"AUC-PR per test window, {' vs '.join(sorted(df['graph'].unique()))} ({tag}: {proto}, mean ± std over seeds)", y=1.02)
     fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
@@ -247,6 +248,27 @@ def graph_loop(tag):
     fig.tight_layout(); fig.savefig(FIG / f"fig_graph_loop_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
+def graph_loop_rounds(tag):
+    """Bias audit of the alarm-triggered self-training (professor's Q2): per variant, the positive share
+    of the pseudo-labelled set and the minority recall on the probe labels, round by round, against the
+    training prior. Averaged over seeds and retrain windows of the attack scenario."""
+    r = read(f"graph_loop_rounds_{tag}.csv")
+    if r is None or len(r) == 0:
+        return
+    r = r[r["scenario"] == "attack"] if "scenario" in r else r
+    fig, axes = plt.subplots(1, 2, figsize=(8.5, 3.4))
+    for v, sub in r.groupby("variant"):
+        s = sub.groupby("round").agg(pos=("pseudo_pos_share", "mean"), rec=("probe_minority_recall", "mean"))
+        axes[0].plot(s.index, s["pos"], marker="o", label=v); axes[1].plot(s.index, s["rec"], marker="o", label=v)
+    axes[0].axhline(r["prior"].mean(), color="k", ls="--", lw=1, label=f"training prior ({r['prior'].mean():.3f})")
+    axes[0].set_title("positive share of the pseudo-labelled set"); axes[0].set_ylabel("share"); axes[0].set_ylim(0, None)
+    axes[1].set_title("minority recall on the probe labels"); axes[1].set_ylabel("recall at the prior's top-k")
+    for ax in axes:
+        ax.set_xlabel("self-training round"); ax.grid(alpha=0.3, lw=0.5); ax.legend(fontsize=7)
+    fig.suptitle(f"Does confidence-based self-training drift toward the normal class? ({tag}, attack scenario)", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_graph_loop_rounds_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+
+
 def main():
     p = argparse.ArgumentParser(); p.add_argument("--tag", default="raw"); a = p.parse_args()
     FIG.mkdir(parents=True, exist_ok=True)
@@ -256,7 +278,10 @@ def main():
     if a.tag == "raw":
         headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves")
         adversarial("mat", "graph_adversarial", "model")
-        graph_loop("mat_lvl0.2")
+        # every loop run that exists (level, and noise when it differs from the default 0.1)
+        for f in sorted(TAB.glob("graph_loop_windows_mat_lvl*.csv")):
+            loop_tag = f.stem.removeprefix("graph_loop_windows_")
+            graph_loop(loop_tag); graph_loop_rounds(loop_tag)
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 
