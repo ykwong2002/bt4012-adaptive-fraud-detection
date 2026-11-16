@@ -1,0 +1,16 @@
+scenario,seed,window,alarm,variant
+attack,0,3,False,-
+attack,0,4,False,-
+attack,0,5,False,-
+attack,0,6,False,-
+attack,0,7,False,-
+attack,1,3,False,-
+attack,1,4,False,-
+attack,1,5,False,-
+attack,1,6,False,-
+attack,1,7,False,-
+attack,2,3,False,-
+attack,2,4,False,-
+attack,2,5,False,-
+attack,2,6,False,-
+attack,2,7,False,-

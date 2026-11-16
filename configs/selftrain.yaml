@@ -12,3 +12,6 @@ variants:
   all:              {per_class_threshold: true,  prior_match: true,  balanced_loss: true}
 confidence_quantile: 0.9
 prior_source: train   # train | em  (EM label-shift estimate is always reported as a diagnostic)
+promotion:            # decisions D17: promote only if the challenger wins in >= min_win_prob of paired
+  min_win_prob: 0.9   # bootstrap resamples of the probe labels (0 = the old plain `chal > deployed` rule)
+  n_boot: 1000

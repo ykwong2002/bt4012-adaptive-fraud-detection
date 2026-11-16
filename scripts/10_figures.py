@@ -57,6 +57,66 @@ def headline(tag):
     fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
+SCORER_COLORS = {"feature": "#1f77b4", "cosine": "#ff7f0e", "rur_profile": "#2ca02c"}
+SCORER_LABEL_OFFSET = {"feature": (-8, 8, "right"), "cosine": (8, -12, "left"), "rur_profile": (8, -12, "left")}
+MODEL_NAMES = {"wsage": "WeightedSAGE", "catboost": "CatBoost", "care": "CARE-static", "ae": "Autoencoder"}
+
+
+def scorer_curve(tag):
+    """Model AUC-PR against edge-scorer quality: the noisy-oracle sweep with the real scorers placed on it.
+    Works for the stratified tag ("mat": fold "test") and the wave protocol ("mat_waves": per seed, the
+    mean over test waves). Also writes the plotted numbers to scorer_curve_<tag>.csv."""
+    files = [f for f in sorted(TAB.glob(f"results_{tag}_*_softrank.csv"))
+             if tag.endswith("waves") or "_waves_" not in f.name]      # keep the two protocols apart
+    base = read(f"results_{tag}_raw_graph.csv")
+    if not files or base is None:
+        return
+    source = tag.split("_")[0]
+
+    def per_seed(d, keys):
+        d = d[(d["fold"] == "test") | d["fold"].str.startswith("test_w")]
+        return d.groupby(keys + ["seed"])["auc_pr"].mean().reset_index()
+
+    df = pd.concat(pd.read_csv(f) for f in files)
+    df["scorer"] = df["weights"].str.removeprefix(f"{source}_")
+    auc = {}
+    for s in df["scorer"].unique():
+        # per-seed scorers (fit on one seed's training waves) only belong to the wave protocol
+        per_seed_files = sorted(TAB.glob(f"homophily_weighted_{source}_{s}_w*.csv")) if tag.endswith("waves") else []
+        hs = [pd.read_csv(f) for f in per_seed_files] or [read(f"homophily_weighted_{source}_{s}.csv")]
+        hs = [h for h in hs if h is not None]
+        if hs:
+            auc[s] = float(np.mean([np.average(h["edge_auc_same_vs_cross"], weights=h["edges"]) for h in hs]))
+    df = per_seed(df, ["model", "scorer"])
+    df["edge_auc"] = df["scorer"].map(auc)
+    t = df.groupby(["model", "scorer", "edge_auc"])["auc_pr"].agg(["mean", "std", "count"]).reset_index()
+    base = per_seed(base, ["model"])
+    raw = base[base["seed"].isin(df["seed"].unique())].groupby("model")["auc_pr"].mean()
+    t["raw_graph_auc_pr"] = t["model"].map(raw)
+    t.to_csv(TAB / f"scorer_curve_{tag}.csv", index=False)
+
+    models = sorted(t["model"].unique())
+    fig, axes = plt.subplots(1, len(models), figsize=(4.4 * len(models), 3.6), sharey=False)
+    for ax, m in zip(np.atleast_1d(axes), models):
+        sub = t[t["model"] == m]
+        noisy = sub[sub["scorer"].str.startswith("noisy")].sort_values("edge_auc")
+        ax.errorbar(noisy["edge_auc"], noisy["mean"], yerr=noisy["std"].fillna(0), color="k", lw=2,
+                    marker="o", ms=6, capsize=3, label="noisy oracle (simulated)")
+        for row in sub[~sub["scorer"].str.startswith("noisy")].itertuples():
+            ax.errorbar(row.edge_auc, row.mean, yerr=0 if np.isnan(row.std) else row.std, ls="none", marker="s", ms=8,
+                        capsize=3, color=SCORER_COLORS.get(row.scorer, "grey"), label=f"{row.scorer} scorer")
+            dx, dy, ha = SCORER_LABEL_OFFSET.get(row.scorer, (8, -12, "left"))
+            ax.annotate(row.scorer, (row.edge_auc, row.mean), xytext=(dx, dy), textcoords="offset points", fontsize=8, ha=ha)
+        ax.axhline(raw.get(m, np.nan), color="grey", ls="--", lw=1, label="raw graph")
+        if m != "catboost" and "catboost" in raw:
+            ax.axhline(raw["catboost"], color="grey", ls=":", lw=1, label="CatBoost, raw graph")
+        ax.grid(alpha=0.3, lw=0.5)
+        ax.set_title(MODEL_NAMES.get(m, m)); ax.set_xlabel("edge-scorer AUC, same- vs cross-label edges"); ax.set_ylabel("AUC-PR (test)")
+        ax.legend(fontsize=7, loc="upper left")
+    fig.suptitle(f"How good must an edge scorer be? ({tag}, softrank weights, mean ± std over seeds)", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_scorer_curve_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+
+
 def distil(tag):
     m = read(f"distil_metrics_{tag}.csv")
     if m is None:
@@ -143,27 +203,60 @@ def selftrain(tag):
         fig.tight_layout(); fig.savefig(FIG / f"fig_selftrain_{tag}_{gname}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
-def adversarial(tag):
-    s = read(f"adversarial_summary_{tag}.csv")
+def adversarial(tag, prefix="adversarial", by="graph"):
+    s = read(f"{prefix}_summary_{tag}.csv")
     if s is None:
         return
     fig, axes = plt.subplots(1, 2, figsize=(8, 3.2))
-    for gname, sub in s.groupby("graph"):
+    for gname, sub in s.groupby(by):
         axes[0].plot(sub["level"], sub["auc_pr"], marker="o", label=gname)
         axes[1].plot(sub["level"], sub["injected_recall"], marker="o", label=gname)
     axes[0].set_title("AUC-PR vs injection volume"); axes[1].set_title("injected-node recall@10%")
     for ax in axes:
         ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=8)
-    fig.tight_layout(); fig.savefig(FIG / f"fig_adversarial_{tag}.png", dpi=150); plt.close(fig)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150); plt.close(fig)
+
+
+def graph_loop(tag):
+    """End-to-end loop (D16): monitor statistic vs its threshold per wave (clean vs attack), and AUC-PR
+    per wave of the deployed model vs incumbent, no-pseudo-label control and all-labels oracle."""
+    mon, wins = read(f"graph_loop_monitor_{tag}.csv"), read(f"graph_loop_windows_{tag}.csv")
+    if mon is None or wins is None or "deployed_ap" not in wins:
+        return
+    fig, axes = plt.subplots(1, 3, figsize=(13, 3.6))
+    h = mon[mon["signal"] == "h_text_raw"]
+    for scen, sub in h.groupby("scenario"):
+        s = sub.groupby("window")[["ks_max", "ks_thr"]].mean()
+        axes[0].plot(s.index, s["ks_max"], marker="o", label=f"KS, {scen}")
+    axes[0].plot(s.index, s["ks_thr"], "k:", lw=1, label="calibrated threshold")
+    axes[0].set_title("monitor: neighbourhood consistency"); axes[0].set_xlabel("wave"); axes[0].legend(fontsize=7)
+    att = wins[wins["scenario"] == "attack"]
+    for ax, v in zip(axes[1:], ["naive", "per_class"]):        # collapses vs best (bias audit, prof. Q2)
+        sub = att[att["variant"] == v]
+        if sub.empty:
+            continue
+        s = sub.groupby("window")[["deployed_ap", "incumbent_ap", "control_ap", "upper_ap"]].mean()
+        ax.plot(s.index, s["deployed_ap"], marker="o", lw=2, label=f"deployed ({v})")
+        ax.plot(s.index, s["incumbent_ap"], "k--", lw=1, label="incumbent")
+        ax.plot(s.index, s["control_ap"], "k-.", lw=1, label="control (no pseudo-labels)")
+        ax.plot(s.index, s["upper_ap"], "k:", lw=1, label="all labels (oracle)")
+        for wdw in sub.loc[sub["alarm"].astype(bool), "window"].unique():
+            ax.axvline(wdw, color="k", alpha=0.08, lw=8)
+        ax.set_title(f"attack: AUC-PR per wave, variant {v}"); ax.set_xlabel("wave (shaded = alarm)"); ax.legend(fontsize=7)
+    fig.suptitle(f"Graph-only adaptive loop ({tag})", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_graph_loop_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
 def main():
     p = argparse.ArgumentParser(); p.add_argument("--tag", default="raw"); a = p.parse_args()
     FIG.mkdir(parents=True, exist_ok=True)
-    for fn in (headline, distil, tau_sweep, drift, selftrain, adversarial):
+    for fn in (headline, scorer_curve, distil, tau_sweep, drift, selftrain, adversarial):
         fn(a.tag)
+    adversarial(a.tag, "graph_adversarial", "model")       # graph-only track (D13), any source
     if a.tag == "raw":
-        headline("mat"); selftrain("mat")
+        headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves")
+        adversarial("mat", "graph_adversarial", "model")
+        graph_loop("mat_lvl0.2")
     print("figures:", sorted(p.name for p in FIG.glob("fig_*")))
 
 

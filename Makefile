@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil train drift selftrain adversarial figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-all figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -28,6 +28,9 @@ llm-score:
 distil:
 	$(PY) scripts/05_distil_edges.py $(SMOKEFLAG)
 
+feature-edges:
+	$(PY) scripts/05b_feature_edges.py --scorer feature $(SMOKEFLAG)
+
 train:
 	$(PY) scripts/06_train.py $(SMOKEFLAG)
 
@@ -40,7 +43,44 @@ selftrain:
 adversarial:
 	$(PY) scripts/09_adversarial.py $(SMOKEFLAG)
 
+graph-adversarial:                 # graph-only track (D13): arrival waves + node injection, runs on .mat
+	$(PY) scripts/06_train.py --source mat --waves $(SMOKEFLAG)
+	$(PY) scripts/09b_graph_adversarial.py --source mat $(SMOKEFLAG)
+
 figures:
 	$(PY) scripts/10_figures.py
 
 all: data eda train drift selftrain figures
+
+# graph-only scorer-quality curve under arrival waves (D12, D13): noisy oracle, cosine, feature scorer
+NOISY ?= 0.5 0.6 0.7 0.8 0.9
+CURVE_SEEDS ?= 0,1,2
+comma := ,
+graph-scorers:
+	$(PY) scripts/05b_feature_edges.py --source mat --scorer cosine
+	for a in $(NOISY); do $(PY) scripts/05b_feature_edges.py --source mat --scorer noisy_oracle --edge-auc $$a; done
+	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer feature --waves-seed $$s; done
+	for w in cosine $(addprefix noisy,$(NOISY)); do $(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights data/processed/edge_scores_mat_$$w.npz --tag mat_waves_$${w}_softrank; done
+	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_feature_w{seed}.npz' --tag mat_waves_feature_softrank
+	$(MAKE) rur-scorer PY="$(PY)" CURVE_SEEDS=$(CURVE_SEEDS)
+
+# R-U-R user-profile scorer (D15), fit per seed on that seed's training waves
+rur-scorer:
+	for s in $(subst $(comma), ,$(CURVE_SEEDS)); do $(PY) scripts/05b_feature_edges.py --source mat --scorer rur_profile --waves-seed $$s; done
+	$(PY) scripts/06_train.py --source mat --waves --mode softrank --models wsage,catboost --seeds $(CURVE_SEEDS) --weights 'data/processed/edge_scores_mat_rur_profile_w{seed}.npz' --tag mat_waves_rur_profile_softrank
+
+# end-to-end adaptive loop on the graph-only track (D16): monitor sensitivity at 5/10 %, full loop at 20 %
+graph-loop:
+	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
+	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
+	$(PY) scripts/12_stats.py --tag mat
+
+# every reported number and figure (graph-only track, D18), from a fresh clone
+graph-all: data
+	$(PY) scripts/02_build_graph.py --source mat
+	$(PY) scripts/03_eda.py --source mat
+	$(PY) scripts/06_train.py --source mat --waves
+	$(MAKE) graph-scorers PY="$(PY)"
+	$(PY) scripts/05c_edge_diagnostics.py --source mat
+	$(MAKE) graph-loop PY="$(PY)"
+	$(PY) scripts/10_figures.py

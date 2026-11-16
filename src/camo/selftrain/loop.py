@@ -41,6 +41,21 @@ def ap(y, s, idx):
     return float(average_precision_score(y[idx], s[idx])) if len(idx) and 0 < y[idx].sum() < len(idx) else np.nan
 
 
+def at_threshold(y, s, idx, thr: float = 0.5) -> dict:
+    """Operating-point view (decisions D17): what the deployed model actually flags at its decision
+    threshold. AUC-PR only ranks, so a model trained on collapsed pseudo-labels can rank well and still
+    flag almost nothing; recall at the threshold exposes that."""
+    flag = s[idx] >= thr; pos = y[idx] == 1
+    return {"flag_rate": float(flag.mean()) if len(idx) else np.nan,
+            "recall_at_thr": float((flag & pos).sum() / max(1, pos.sum())),
+            "precision_at_thr": float((flag & pos).sum() / flag.sum()) if flag.sum() else np.nan}
+
+
+def promotion_kw(scfg: dict, seed: int) -> dict:
+    p = scfg.get("promotion", {})
+    return {"min_win_prob": p.get("min_win_prob", 0.0), "n_boot": p.get("n_boot", 1000), "seed": seed}
+
+
 def self_train_variant(xtab, y, train_idx, pool, unl, probe, comm, anom, start_score, prior_used, v, scfg, seed, iters):
     """Rounds of pseudo-labelling + retraining for one variant. Returns (model, score, audits)."""
     score, hist, model = start_score.copy(), [], None
@@ -68,7 +83,7 @@ def run_selftrain(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
     unl = np.setdiff1d(pool, probe); eval_idx = unl
     mu, sd = g.x[train_idx].mean(0), g.x[train_idx].std(0) + 1e-6
     x = ((g.x - mu) / sd).astype(np.float32)
-    xtab = make_table(x, folds[0].edges, folds[0].weights)
+    xtab = make_table(x, folds[0].edges, folds[0].weights, folds[0].n_visible)
 
     inc = fit_challenger(xtab, g.y[train_idx], train_idx, seed, True, iters)
     inc_score = inc.predict_proba(xtab)[:, 1]
@@ -93,7 +108,7 @@ def run_selftrain(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
             _, score, h = self_train_variant(xtab, g.y, train_idx, pool, unl, probe, comm, anom, score, prior_used,
                                              v, {**scfg, "rounds": 1}, seed, iters)
             hist += h
-            pr = promote(inc_score, score, probe, g.y)
+            pr = promote(inc_score, score, probe, g.y, **promotion_kw(scfg, seed))
             rows.append({"variant": vname, "seed": seed, "round": rd, "protocol": protocol, "graph": graph_name,
                          **h[0], **pr, "chal_eval_ap": ap(g.y, score, eval_idx), "inc_eval_ap": low_ap,
                          "control_eval_ap": control_ap, "upper_ap": up_ap})
@@ -121,7 +136,7 @@ def run_triggered(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
 
     def table_at(cut):
         e, ww = _mask(edges, ew, g.dates, cut)
-        return make_table(x, e, ww), e, ww
+        return make_table(x, e, ww, int((g.dates <= cut).sum())), e, ww
 
     rng = np.random.default_rng(seed)
     probe_of = {k: rng.choice(np.where(w == k)[0], min(probe_per_window, int((w == k).sum())), replace=False) for k in post}
@@ -144,7 +159,11 @@ def run_triggered(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
                    "deployed_ap": ap(y, s_dep, eval_t), "incumbent_ap": ap(y, inc.predict_proba(xt_t)[:, 1], eval_t),
                    "control_ap": ap(y, shadow_control.predict_proba(xt_t)[:, 1], eval_t) if shadow_control else np.nan,
                    "upper_ap": ap(y, shadow_upper.predict_proba(xt_t)[:, 1], eval_t) if shadow_upper else np.nan,
-                   "retrained": False, "promoted": False, "n_eval": len(eval_t), "n_pos": int(y[eval_t].sum())}
+                   "retrained": False, "promoted": False, "n_eval": len(eval_t), "n_pos": int(y[eval_t].sum()),
+                   **{f"deployed_{k}": v for k, v in at_threshold(y, s_dep, eval_t).items()},
+                   **{f"incumbent_{k}": v for k, v in at_threshold(y, inc.predict_proba(xt_t)[:, 1], eval_t).items()},
+                   **({f"control_{k}": v for k, v in at_threshold(y, shadow_control.predict_proba(xt_t)[:, 1], eval_t).items()}
+                      if shadow_control else {})}
             if row["alarm"] and i < len(post) - 1:      # retrain at the end of t, used from t+1
                 done = post[: i + 1]
                 pool = np.where(np.isin(w, done))[0]
@@ -159,11 +178,12 @@ def run_triggered(g, cfg, scfg, seed, weights, variants, iters, probe_per_window
                 shadow_control = fit_challenger(xt_t, y[train_idx], train_idx, seed, v["balanced_loss"], iters)
                 shadow_upper = fit_challenger(xt_t, np.concatenate([y[train_idx], y[unl]]), np.concatenate([train_idx, unl]),
                                               seed, True, iters)
-                pr = promote(s_dep, s_chal, probe, y)
+                pr = promote(s_dep, s_chal, probe, y, **promotion_kw(scfg, seed))
                 collapse = collapse_flag(hist); any_collapse |= collapse
                 for rd, a in enumerate(hist):
                     round_rows.append({"variant": vname, "seed": seed, "graph": graph_name, "window": int(t), "round": rd, **a})
                 row.update({"retrained": True, "promoted": pr["promoted"], "deployed_probe_ap": pr["inc_probe_ap"],
+                            "win_prob": pr["win_prob"],
                             "chal_probe_ap": pr["chal_probe_ap"], "em_prior": prior_em, "true_pool_prior": float(y[pool].mean()),
                             "pseudo_pos_share": hist[-1]["pseudo_pos_share"], "collapse": collapse,
                             "n_pool": len(pool), "n_probe": len(probe)})

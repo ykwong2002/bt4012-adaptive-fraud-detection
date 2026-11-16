@@ -1,15 +1,27 @@
 """CatBoost on node features + per-relation 1-hop neighbour aggregates (weighted mean of neighbour
 features and weighted degree). Aggregates are computed on the *masked* graph passed in, so they
-respect the temporal cutoff like every other model."""
+respect the temporal cutoff like every other model.
+
+Degree is reported per DEG_SCALE visible nodes (decisions D14): the masked graph grows as nodes
+arrive, so a raw degree learned on the small training graph means something else on a later, larger
+one. Under random arrival each neighbour is visible with probability n_visible / n, so degree divided
+by n_visible is an unbiased, scale-free estimate of the node's full-graph degree rate. Neighbour means
+need no correction (an average does not grow with the number of neighbours)."""
 from __future__ import annotations
 
 import numpy as np
 from catboost import CatBoostClassifier
 
 
+DEG_SCALE = 10_000
+
+
 def neighbour_aggregates(x: np.ndarray, edges: dict[str, np.ndarray],
-                         weights: dict[str, np.ndarray] | None = None) -> tuple[np.ndarray, list[str]]:
+                         weights: dict[str, np.ndarray] | None = None,
+                         n_visible: int | None = None) -> tuple[np.ndarray, list[str]]:
+    """`n_visible`: nodes that exist in this graph state (default: all rows of x)."""
     n, d = x.shape
+    deg_scale = DEG_SCALE / max(1, n if n_visible is None else n_visible)
     cols, names = [], []
     for r, e in edges.items():
         w = np.ones(e.shape[1]) if weights is None or r not in weights else np.asarray(weights[r], float)
@@ -20,13 +32,13 @@ def neighbour_aggregates(x: np.ndarray, edges: dict[str, np.ndarray],
             agg[:, j] = np.bincount(dst, weights=ww * x[src, j], minlength=n)
         agg = agg / np.maximum(den, 1e-9)[:, None]
         agg[den == 0] = 0.0
-        cols.append(agg); cols.append(den[:, None])
-        names += [f"{r}_nbmean_{j}" for j in range(d)] + [f"{r}_wdeg"]
+        cols.append(agg); cols.append((den * deg_scale)[:, None])
+        names += [f"{r}_nbmean_{j}" for j in range(d)] + [f"{r}_wdeg_per{DEG_SCALE}"]
     return np.hstack(cols), names
 
 
-def make_table(x: np.ndarray, edges, weights=None) -> np.ndarray:
-    agg, _ = neighbour_aggregates(x, edges, weights)
+def make_table(x: np.ndarray, edges, weights=None, n_visible: int | None = None) -> np.ndarray:
+    agg, _ = neighbour_aggregates(x, edges, weights, n_visible)
     return np.hstack([x, agg])
 
 

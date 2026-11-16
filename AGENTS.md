@@ -10,11 +10,18 @@ Rohan Jaggi, Wong Yeow Kang. Due **20 Nov 2026 23:59**: `report05.pdf` (8–12 p
 `video05.mp4` (≤15 min), and this repo (README must reproduce results). Proposal: `docs/proposal.pdf`.
 Guidelines + rubric: `docs/guidelines.pdf`.
 
-**Claim.** Fraudsters camouflage by linking to legitimate accounts so GNN neighbourhood averaging hides
-them. If camouflage attacks graph structure, the defence should repair the structure: we use LLM-derived
-text evidence to reweight or remove edges the text does not support (label-free), and because the
-rewiring is label-free it doubles as a drift monitor. On trigger, a challenger is retrained with
-pseudo-labels and promoted only if it beats the incumbent on recent held-out data.
+**Setting.** Fraudsters camouflage by linking to legitimate accounts, so GNN neighbourhood averaging hides
+them. The proposal planned to repair the graph with LLM text evidence; the raw text is no longer
+obtainable, so the project runs on the public `YelpChi.mat` graph only (**D18**). The claim has two parts:
+
+1. **When does structure repair pay?** A noisy-oracle edge scorer sets the bar (gain from edge AUC
+   ~0.6–0.7; WeightedSAGE matches raw-graph CatBoost at ~0.85). The right yardstick is *fraud-centred*
+   edge AUC, not global (D15). None of our label-free scorers (feature, cosine, R-U-R profile) clears
+   the bar on `.mat`: a negative result with a usable threshold.
+2. **Can a label-free monitor + label-scarce retraining respond to camouflage without collapsing to the
+   normal class?** 0 false alarms on clean waves; 20 % injection alarmed one wave late; per_class /
+   prior_match self-training recover +0.03 AUC-PR over a no-pseudo-label control; naive and
+   balanced-loss self-training collapse toward legit (professor Q2). The monitor misses 5–10 % injection.
 
 **We are graded on cleverness and justification, not on AUC.** Nothing off-the-shelf end to end; every
 component is ours or a clearly acknowledged re-implementation of a comparator.
@@ -32,28 +39,32 @@ component is ours or a clearly acknowledged re-implementation of a comparator.
 
 ## The headline experiment (must exist even if everything else slips)
 
-Raw graph vs text-refined graph (soft weights), WeightedSAGE + CatBoost, strictly temporal split,
-per-window AUC-PR, plus the per-relation homophily diagnostic. Everything else supports this.
+On `.mat` under random arrival waves (D13; train 0–2, val 3, test 4–7, 5 seeds): raw graph vs
+scorer-reweighted graph (softrank weights), WeightedSAGE + CatBoost, per-wave AUC-PR, with the
+noisy-oracle curve as the reference and paired 95 % intervals (D17). Second pillar: the adaptive loop
+(`11_graph_loop.py`, D16). Everything else supports these.
 
 ## Data (read `data/README.md` before touching data)
 
-- Two YelpChi versions. The **graph file** `YelpChi.mat` (CARE-GNN / DGL): 45,954 review nodes,
-  32 features, labels, relations R-U-R / R-S-R / R-T-R. No text, no dates, no ids, no index→review map.
-- The **raw text** (Rayana & Akoglu 2015): 67,395 reviews with `(user_id, product_id, rating, label, date)`
-  and review text. Obtained by email from the author; **we rebuild the graph from it** (drop products
-  with >800 reviews → 45,954 nodes) rather than align by index. See `docs/decisions.md`.
-- `.mat` features are full-data aggregates: **never use them under a temporal split.**
-- Raw data lives in `data/raw/` (git-ignored). LLM scoring caches in `data/llm/*.parquet` are
-  **committed** (no text inside). Never re-score what is cached.
+- **Used:** the graph file `YelpChi.mat` (CARE-GNN / DGL, `make data`): 45,954 review nodes, 32 features,
+  labels (14.5 % fraud), relations R-U-R / R-S-R / R-T-R. No text, no dates, no ids, no index→review map.
+- **Not obtainable:** the raw text (Rayana & Akoglu 2015). The text pipeline (`load_raw`, `04`, `05`,
+  `07`–`09`) stays in the repo and runs on the synthetic fixture in `tests/fixtures/raw_mini`; it produces
+  **no reported number**.
+- `.mat` features are full-data aggregates; arrival waves are random, so they mimic arrival order without
+  claiming real time. Say this in the report wherever a wave result appears.
+- Raw data lives in `data/raw/` (git-ignored).
 
 ## Non-negotiables
 
-- Temporal splits only for any reported model number; graph masking removes nodes dated after the
-  cutoff (`src/camo/eval/splits.py`). Stratified splits are allowed only for the early bias-ablation
-  on the `.mat` graph and must be labelled as such.
-- Graph reconstruction never sees fraud labels.
+- Every reported model number uses **arrival waves** (`--waves`, `src/camo/eval/waves.py`): an edge is
+  visible only once both endpoints have arrived, degree features are scaled by visible nodes (D14), and
+  waves are re-drawn per seed. Stratified `.mat` splits appear only as a labelled comparison.
+- Edge scorers and the drift monitor never see fraud labels (labels are used for diagnosis only, e.g.
+  `05c_edge_diagnostics.py`). Scorers are fit on training waves only.
 - Every number and figure in the report is produced by a script in `scripts/` and lands in `outputs/`.
 - Each script writes `outputs/runs/<name>/run.json` (git SHA, config hash, seed, wall time).
+- Report uncertainty as paired seed-level 95 % intervals (`12_stats.py`), not seed std.
 - External code consulted or adapted (CARE-GNN, DGL loader, Nash-Detect features) goes in
   `docs/acknowledgements.md`. Generative-AI use is acknowledged in the report per module rules.
 - `ANTHROPIC_API_KEY` lives only in `.env`. No LLM batch is submitted without the owner's go-ahead;
@@ -63,18 +74,18 @@ per-window AUC-PR, plus the per-relation homophily diagnostic. Everything else s
 ## Repo map
 
 ```
-src/camo/data       load_mat.py load_raw.py graph_build.py features_pit.py
-src/camo/llm        prompts.py score_reviews.py score_pairs.py cache.py
-src/camo/graph      homophily.py edge_scorer.py rewire.py
-src/camo/models     wsage.py care_static.py catboost_model.py autoencoder.py
-src/camo/drift      psi.py ks.py monitor.py
-src/camo/selftrain  pseudo_labels.py bias_audit.py challenger.py
-src/camo/adversarial inject.py
-src/camo/eval       splits.py metrics.py runlog.py
-scripts/            01_download … 10_figures (numbered, idempotent)
-configs/            base.yaml reconstruction.yaml drift.yaml selftrain.yaml
-tests/              pytest; fixtures/raw_mini is a synthetic raw-format sample
-docs/               proposal, guidelines, decisions.md, data_sources.md, acknowledgements.md, report_outline.md
+src/camo/data        load_mat.py (Graph)  ·  text track: load_raw.py graph_build.py features_pit.py
+src/camo/eval        waves.py (arrival waves) protocol.py (folds, n_visible) splits.py metrics.py runlog.py
+src/camo/graph       feature_scorer.py rur_scorer.py edge_scorer.py rewire.py homophily.py embed.py
+src/camo/models      wsage.py care_static.py catboost_model.py autoencoder.py runner.py
+src/camo/drift       psi.py ks.py monitor.py (calibrated PSI/KS, D8)
+src/camo/selftrain   loop.py (alarm-triggered retraining, D9) pseudo_labels.py bias_audit.py challenger.py
+src/camo/adversarial graph_inject.py (graph-level camouflage, D13)  ·  text track: inject.py
+src/camo/llm         text track only
+scripts/             graph-only: 01 02 03 05b 05c 06 09b 10 11 12  ·  text track: 04 05 07 08 09
+configs/             base.yaml reconstruction.yaml drift.yaml selftrain.yaml
+tests/               pytest; fixtures/raw_mini is a synthetic raw-format sample
+docs/                proposal, guidelines, decisions.md (D1–D18), report_outline.md, data_sources.md, acknowledgements.md
 ```
 
 ## How to work
@@ -84,9 +95,8 @@ GitHub: https://github.com/ykwong2002/bt4012-adaptive-fraud-detection (public; c
 ```
 make setup        # uv sync (+dev)
 make test         # pytest
-make data         # download .mat; verify raw files if present
-make eda          # scripts/03_eda.py
-make train        # scripts/06_train.py
+make data         # download .mat (hash checked)
+make graph-all    # every reported number and figure (graph-only track)
 make all SMOKE=1  # every phase on a 2k-node subsample
 ```
 
@@ -100,14 +110,15 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 | Area | Owner |
 |---|---|
-| Data, rebuild, EDA (report §2, §3.1) | TBD |
-| LLM scoring + graph reconstruction (§3.2) | TBD |
-| Models + drift detection (§3.3, §4.1) | TBD |
-| Self-training, bias audit, adversarial (§3.4, §4.2) | TBD |
+| Data, arrival waves, EDA (report §2, §3.1) | TBD |
+| Edge scorers + scorer curve (§3.2, §4.1) | TBD |
+| Models + drift monitor (§3.3, §3.4) | TBD |
+| Self-training, bias audit, camouflage injection (§3.5, §4.2) | TBD |
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
-- 2026-10-30 (branch fix/review-issues): fixed review issues 1, 4-10 (pair prompt v2, strict text join, calibrated drift monitor, alarm-triggered self-training with control, injection cap + fixed windows); see docs/decisions.md D7-D10. Smoke pipeline 02-10 and 37 tests pass. The committed .mat self-training tables predate D9 and need a rerun.
-- 2026-10-30: full pipeline (scripts 01–10) runs end to end on the synthetic fixture in `--smoke --mock` mode; `.mat` baselines running; raw text requested from the dataset author (nothing text-dependent can be reported until it lands).
-- Pivot date **8 Nov**: if raw text has not arrived, switch to the graph-only track (see `docs/decisions.md`).
-- Experiment freeze **15 Nov**; 16–20 Nov report, slides, video.
+- 2026-11-15 (feat/graph-waves) **experiments frozen; graph-only track final (D18).** Docs restated around the two-part claim; `make graph-all` reproduces everything.
+- Results (waves, test AUC-PR): CatBoost 0.850, WeightedSAGE 0.698, CARE-static 0.683, AE 0.210 (5 seeds). Scorer curve: repair pays from edge AUC ~0.6–0.7; no label-free scorer gives a gain whose interval excludes 0 for both models (D15, D17).
+- Loop at 20 % injection (D16, D17): 0 false alarms, alarm at wave 5; incumbent 0.862, control 0.902, per_class 0.932 (+0.030 [0.023, 0.037]), oracle 0.973; naive / balanced_loss collapse to 1.9 % / 6.0 % pseudo-positives.
+- Open, optional: `09b_graph_adversarial.py` not yet run on `.mat`; the committed stratified `selftrain_*_mat` tables predate D9 (do not report them).
+- 16–20 Nov: report, slides, video (`docs/report_outline.md`).

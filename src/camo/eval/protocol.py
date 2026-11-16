@@ -21,6 +21,7 @@ class Fold:
     edges: dict[str, np.ndarray]    # edges visible in this fold
     weights: dict[str, np.ndarray] | None
     cutoff: object = None
+    n_visible: int | None = None    # nodes that exist at the cutoff (all nodes when undated)
 
 
 def _mask(edges, weights, dates, cutoff):
@@ -57,7 +58,7 @@ def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke
     edges, weights = apply_rewiring(g.edges, weights, mode, tau)
     if g.dates is None:
         tr, va, te = stratified_split(g.y, seed)
-        f = lambda name, idx: Fold(name, idx, edges, weights)
+        f = lambda name, idx: Fold(name, idx, edges, weights, None, g.n)
         return "stratified", tr, [f("train", tr), f("val", va), f("test", te)]
     w = windows if windows is not None else equal_count_windows(g.dates, cfg["windows"]["n_windows"])
     plan = temporal_plan(w, cfg["windows"]["n_train_windows"], cfg["windows"]["n_val_windows"])
@@ -65,14 +66,15 @@ def build_folds(g, cfg: dict, seed: int, weights=None, mode=None, tau=0.0, smoke
     tr = np.where(np.isin(w, plan["train"]))[0]
     cut = g.dates[tr].max()
     e, ww = _mask(edges, weights, g.dates, cut)
-    folds.append(Fold("train", tr, e, ww, cut))
+    folds.append(Fold("train", tr, e, ww, cut, int((g.dates <= cut).sum())))
     va = np.where(np.isin(w, plan["val"]))[0]
     cut = g.dates[va].max()
     e, ww = _mask(edges, weights, g.dates, cut)
-    folds.append(Fold("val", va, e, ww, cut))
+    folds.append(Fold("val", va, e, ww, cut, int((g.dates <= cut).sum())))
     for k in plan["test"]:
         te = np.where(w == k)[0]
         cut = g.dates[te].max()
         e, ww = _mask(edges, weights, g.dates, cut)
-        folds.append(Fold(f"test_w{k}", te, e, ww, cut))
-    return "temporal", tr, folds
+        folds.append(Fold(f"test_w{k}", te, e, ww, cut, int((g.dates <= cut).sum())))
+    # "waves": synthetic arrival order on an undated graph (camo.eval.waves, decisions D13)
+    return g.meta.get("protocol", "temporal"), tr, folds
