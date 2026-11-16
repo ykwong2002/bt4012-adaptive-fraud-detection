@@ -2,6 +2,29 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D19 2026-11-16 The text track runs on a YelpChi-sized slice of YelpZip; YelpChi graph-only stays as the fallback
+The YelpChi raw release never arrived (D18), but YelpZip (Rayana & Akoglu 2015: same authors, same
+Yelp-filter labels, same `metadata` + `reviewContent` format, review text and real dates) is publicly
+mirrored (`data/README.md`). `load_raw` joined all 608,598 reviews with no code change. The full release
+is too large for R-S-R (one restaurant has 7,378 reviews), so `02_build_graph.py` keeps, after the
+800-review cap, whole restaurants from the largest down until 48,000 reviews
+(`graph.raw_max_reviews`; `select_products`): 71 restaurants, 47,532 reviews, 35,812 users, 10.2 %
+fraud, 2005-03 → 2015-01, R-U-R 25,119 / R-T-R 290,324 / R-S-R 5,260,757. Whole restaurants keep the
+product × star and product × month blocks intact (a random review sample would not); point-in-time
+features are computed on the whole release first so no user or product history is cut. The slice shows
+the same camouflage signature as YelpChi, stronger: fraud node homophily 0.13 on R-S-R / R-T-R vs 0.90
+for legit, 0.93 on R-U-R; 62 % of reviews have no R-U-R neighbour; fraud rate per equal-count window
+drifts 0.09 → 0.12 → 0.09.
+Plan: run the proposal's text track (04 → 05 → 06 raw vs refined → 07 → 08 → 09) on this slice in
+parallel with the report, hard cutoff Wednesday 18 Nov night. If it completes, the report is framed on
+YelpZip (the proposal as written) with the `.mat` noisy-oracle curve and bias audit as supporting
+results; if partial, each result states its dataset; if it fails, D18 stands. Reported numbers from the
+two graphs are never mixed in one table.
+Rejected: YelpNYC (no public mirror found); Amazon CARE-GNN data rebuilt from public reviews (fraud
+labels are a helpful-vote heuristic); switching the whole report to YelpZip before results exist
+(no fallback with four days left). Caveat for the report: the files come from a public mirror of the
+ODDS release, not from the authors; cite Rayana & Akoglu 2015 and the ODDS page as the readme asks.
+
 ## D18 2026-11-15 The graph-only track is final; the claim is restated around what it can show
 The raw review text and dates (Rayana & Akoglu 2015) are no longer obtainable, so the pivot below is
 taken for good: every reported number comes from the public `YelpChi.mat` under random arrival waves

@@ -1,6 +1,9 @@
 # Data
 
-Two YelpChi versions are supported; only the graph file is used for reported results. Nothing under `data/raw/` is committed.
+Two kinds of input are supported: the public YelpChi graph file (no text, no dates) and a Rayana-format
+raw release with review text and dates. The YelpChi raw release never arrived; since 2026-11-16 the raw
+track runs on **YelpZip** (same authors, same labels, same format; decisions D19). Nothing under
+`data/raw/` is committed.
 
 ## 1. Graph file (public, auto-downloaded)
 
@@ -12,22 +15,33 @@ Keys: `features` (45,954 × 32 sparse), `label` (1 × 45,954), `net_rur`, `net_r
 (45,954 × 45,954 sparse, symmetric), `homo` (union). No text, dates, ids or index→review mapping.
 Published undirected edge counts: R-U-R 49,315 · R-T-R 573,616 · R-S-R 3,402,743.
 
-## 2. Raw reviews with text and dates (by email from the dataset author)
+## 2. Raw reviews with text and dates (Rayana & Akoglu, KDD 2015)
 
-> **Not available (Nov 2026).** This release could not be obtained, so no reported result uses it
-> (`docs/decisions.md` D18). The section below documents the loader, which is tested on the synthetic
-> fixture `tests/fixtures/raw_mini`.
-
-Rayana & Akoglu, KDD 2015. Request from Shebuti Rayana (srayana@cs.stonybrook.edu), see the ODDS
-page https://odds.cs.stonybrook.edu/yelpchi-dataset/. Expected: 67,395 reviews, 38,063 users,
-201 hotels/restaurants, 13.23 % filtered ("fake").
+Three releases share one format (`metadata` + `reviewContent`, tab-separated, one review per line):
+YelpChi (67,395 reviews, Chicago hotels + restaurants), YelpNYC (359,052) and YelpZip (608,598
+reviews, 260,277 users, 5,044 restaurants, 13.2 % filtered, 2004-10 → 2015-01). The ODDS pages
+(https://odds.cs.stonybrook.edu/yelpchi-dataset/ and `.../yelpzip-dataset/`) ask for an email request;
+the YelpChi request (Nov 2026) was never answered. **YelpZip** is also mirrored publicly by projects
+that cite the release (Google Drive folder `16A3lqy53BdCr-K70NnOgb205SruxIcub`, files `metadata`,
+`reviewContent`, `reviewGraph`, `readmeYelp.txt`); that copy is what we use. Cite Rayana & Akoglu 2015
+and the ODDS page, as `readmeYelp.txt` asks.
 
 Place the files here (names as shipped; the loader also accepts gzipped files):
 
 ```
-data/raw/yelpchi_raw/metadata        # one line per review: user_id  product_id  rating  label  date
-data/raw/yelpchi_raw/reviewContent   # one line per review: user_id  product_id  date  review_text
+data/raw/yelpzip_raw/metadata        # one line per review: user_id  product_id  rating  label  date
+data/raw/yelpzip_raw/reviewContent   # one line per review: user_id  product_id  date  review_text
 ```
+
+(`paths.raw_dir` in `configs/base.yaml`; a YelpChi release would go in the same place with
+`graph.raw_release: yelpchi`, which re-enables the rebuilt-vs-published check.)
+
+**YelpChi-sized slice (D19).** YelpZip is too large for the R-S-R relation (one restaurant has 7,378
+reviews). `scripts/02_build_graph.py --source raw` therefore keeps, after the 800-review cap, whole
+restaurants from the largest down until `graph.raw_max_reviews` (48,000) reviews: 71 restaurants,
+47,532 reviews, 35,812 users, 10.2 % fraud, 2005-03 → 2015-01, edges R-U-R 25,119 · R-T-R 290,324 ·
+R-S-R 5,260,757. Point-in-time features are computed on the whole release before slicing, so a review's
+user and product history is complete. `--max-reviews 0` keeps everything.
 
 The loader splits each reviewContent line on its first three tabs only (review text may contain tabs),
 matches text to metadata row by row when both files list the same (user, product, date) in the same

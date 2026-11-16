@@ -1,0 +1,2 @@
+graph,n_nodes,n_fraud,fraud_rate,n_features,edges_rur,edges_rsr,edges_rtr
+raw,47532,4849,0.1020154843053101,14,25119,5260757,290324

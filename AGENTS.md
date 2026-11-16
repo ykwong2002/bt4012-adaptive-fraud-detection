@@ -11,8 +11,11 @@ Rohan Jaggi, Wong Yeow Kang. Due **20 Nov 2026 23:59**: `report05.pdf` (8–12 p
 Guidelines + rubric: `docs/guidelines.pdf`.
 
 **Setting.** Fraudsters camouflage by linking to legitimate accounts, so GNN neighbourhood averaging hides
-them. The proposal planned to repair the graph with LLM text evidence; the raw text is no longer
-obtainable, so the project runs on the public `YelpChi.mat` graph only (**D18**). The claim has two parts:
+them. The proposal planned to repair the graph with LLM text evidence. The YelpChi raw text never
+arrived, so the finished results are on the public `YelpChi.mat` graph (**D18**, below); since 16 Nov the
+text track also runs on a YelpChi-sized slice of **YelpZip** (same authors/labels/format, with text and
+dates, **D19**) — if it completes by Wed 18 Nov night it becomes the headline dataset. The `.mat` claim
+has two parts:
 
 1. **When does structure repair pay?** A noisy-oracle edge scorer sets the bar (gain from edge AUC
    ~0.6–0.7; WeightedSAGE matches raw-graph CatBoost at ~0.85). The right yardstick is *fraud-centred*
@@ -48,9 +51,9 @@ noisy-oracle curve as the reference and paired 95 % intervals (D17). Second pill
 
 - **Used:** the graph file `YelpChi.mat` (CARE-GNN / DGL, `make data`): 45,954 review nodes, 32 features,
   labels (14.5 % fraud), relations R-U-R / R-S-R / R-T-R. No text, no dates, no ids, no index→review map.
-- **Not obtainable:** the raw text (Rayana & Akoglu 2015). The text pipeline (`load_raw`, `04`, `05`,
-  `07`–`09`) stays in the repo and runs on the synthetic fixture in `tests/fixtures/raw_mini`; it produces
-  **no reported number**.
+- **Text track (D19):** YelpZip slice in `data/raw/yelpzip_raw/` (`--source raw`, tag `raw`): 71 restaurants,
+  47,532 reviews, 10.2 % fraud, real dates 2005–2015, strictly temporal windows. The YelpChi raw text
+  (Rayana & Akoglu 2015) itself was never obtainable. Never mix `.mat` and `raw` numbers in one table.
 - `.mat` features are full-data aggregates; arrival waves are random, so they mimic arrival order without
   claiming real time. Say this in the report wherever a wave result appears.
 - Raw data lives in `data/raw/` (git-ignored).
@@ -117,6 +120,7 @@ make all SMOKE=1  # every phase on a 2k-node subsample
 
 ## Status / next steps (keep to ~5 lines, update in each PR)
 
+- 2026-11-16 (feat/yelpzip-text-track, D19): YelpZip slice built (`graph_raw.npz`) and EDA done; text track to run 04 → 09 on it, hard cutoff Wed 18 Nov night; LLM scoring needs the owner's `ANTHROPIC_API_KEY` in `.env` and a `--dry-run` quote first.
 - 2026-11-16 (fix/report-prep, after merging #3 and closing #2 as superseded): review findings every report writer must respect — (1) at noise 0.1 the injected nodes are near-copies of training fraud, so the **incumbent's AUC-PR does not drop under attack** (0.85–0.86 attacked vs 0.83–0.84 clean waves): the loop shows detect → retrain → promote → audit, not recovery from damage; a harder run (`11_graph_loop.py --noise 1.0`, outputs suffixed `_noise1.0`) is pending; (2) decompose the gain: incumbent 0.862 → control 0.902 → per_class 0.932 → oracle 0.973; (3) the plain feature monitor is at least as sensitive as the structural signal on this attack (10 %: 58 % vs 17 % flagged); (4) "alarm one wave late" = `k_consecutive: 2`; (5) keep D15's "optimistic guide" caveat next to the scorer curve. New figure `fig_graph_loop_rounds_*.png` (Q2).
 - 2026-11-15 (feat/graph-waves) **experiments frozen; graph-only track final (D18).** Docs restated around the two-part claim; `make graph-all` reproduces everything.
 - Results (waves, test AUC-PR): CatBoost 0.850, WeightedSAGE 0.698, CARE-static 0.683, AE 0.210 (5 seeds). Scorer curve: repair pays from edge AUC ~0.6–0.7; no label-free scorer gives a gain whose interval excludes 0 for both models (D15, D17).
