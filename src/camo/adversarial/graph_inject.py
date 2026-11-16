@@ -7,7 +7,9 @@ adversarial experiment also runs on the public .mat graph.
 Each injected node is a camouflaged fraud review:
   * features: a randomly chosen training-wave fraud node's features plus Gaussian noise (noise x the
     training standard deviation), i.e. the attacker reuses behaviour that worked before;
-  * degrees: the template's degree in every relation, so the degree distribution is preserved;
+  * degrees: in R-S-R / R-T-R up to the template's degree, so those degree distributions are
+    preserved; in R-U-R the node takes the host user's whole review history (see next point), so its
+    R-U-R degree is the host's, not the template's;
   * R-U-R (camouflage via a hijacked account): the reviews of one legitimate "host" user, i.e. a
     visible legitimate node and its visible R-U-R neighbours;
   * R-S-R / R-T-R (camouflage via a busy product): legitimate members of one visible node's

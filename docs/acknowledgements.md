@@ -12,7 +12,10 @@
   recomputed point-in-time and are not a copy of any public feature-extraction script.
 - **Libraries**: PyTorch, PyTorch Geometric, scikit-learn, CatBoost, NetworkX (Louvain),
   sentence-transformers (MiniLM embeddings), Anthropic SDK.
-- **Generative AI**: Claude (Anthropic) was used (a) as the text scorer inside the method
-  (`claude-haiku-5-5`, structured outputs), (b) to generate synthetic camouflage reviews for the
-  adversarial experiment, and (c) as a coding assistant (Claude Code) for scaffolding and tests. All
-  design decisions, code and results were reviewed and are explainable by the group.
+- **Generative AI**: Claude (Anthropic) was used (a) as the planned text scorer inside the method
+  (`claude-haiku-5-5`, structured outputs, Message Batches); the raw review text never became
+  available, so this scorer only ran on the synthetic fixture and **no reported result uses an LLM
+  judgement**; the planned LLM-generated camouflage reviews were likewise not produced — the reported
+  injection is graph-level and uses no LLM (decisions D13, D18); (b) as a coding assistant (Claude
+  Code) for scaffolding, tests, pull-request review and drafts of the documentation. All design
+  decisions, code and results were reviewed and are explainable by the group.

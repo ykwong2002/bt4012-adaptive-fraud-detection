@@ -13,7 +13,13 @@ distribution narrows wave by wave: the monitor would alarm on graph growth (cf. 
 time-respecting self-training of D9 (all five bias-audit variants), compared per wave against the
 never-retrained incumbent, a no-pseudo-label control and an all-labels oracle.
 
-  uv run python scripts/11_graph_loop.py --source mat [--level 0.2] [--attack-from 4] [--seeds 0,1,2]
+  uv run python scripts/11_graph_loop.py --source mat [--level 0.2] [--noise 0.1] [--attack-from 4] [--seeds 0,1,2]
+
+--noise: feature noise of the injected nodes in training standard deviations. At the default 0.1 the
+injected nodes are near-copies of training fraud, which the incumbent already scores high (its AUC-PR
+on attacked waves does not drop), so that run tests detect -> retrain -> promote, not recovery from
+damage. Larger noise moves the injected features away from the fraud templates; outputs get a
+`_noise<x>` suffix so runs never overwrite each other.
 """
 from __future__ import annotations
 
@@ -42,6 +48,8 @@ def cosine_consistency(x: np.ndarray, edges: dict, train_idx: np.ndarray) -> dic
 
 def per_signal_flags(sig: pd.DataFrame, thr: pd.DataFrame) -> pd.DataFrame:
     cur = sig[~sig["null"]].merge(thr, on="signal", how="left")
+    # refined-vs-raw convergence is a text-track diagnostic; there is no refined graph on this track
+    cur = cur[cur["signal"] != "convergence_refined_vs_raw"]
     cur["flag"] = (cur["psi_mean"] > cur["psi_thr"]) | (cur["ks_max"] > cur["ks_thr"])
     return cur[["window", "signal", "psi_mean", "psi_thr", "ks_max", "ks_thr", "mean_ref", "mean_cur", "flag"]]
 
@@ -49,6 +57,7 @@ def per_signal_flags(sig: pd.DataFrame, thr: pd.DataFrame) -> pd.DataFrame:
 def main():
     p = parser(__doc__)
     p.add_argument("--level", type=float, default=0.2, help="injected nodes per wave, as a fraction of the wave")
+    p.add_argument("--noise", type=float, default=0.1, help="feature noise of injected nodes, in training sd")
     p.add_argument("--attack-from", type=int, default=4, help="first wave that receives injections")
     p.add_argument("--seeds", default=None, help="comma list; default first 3 config seeds (1 for --smoke)")
     p.add_argument("--variants", default=None, help="comma list of self-training variants (default: all)")
@@ -57,7 +66,7 @@ def main():
     args = p.parse_args()
     cfg, dcfg, scfg = load_config("base"), load_config("drift"), load_config("selftrain")
     source = resolve_source(args.source)
-    tag = f"{source}{'_smoke' if args.smoke else ''}_lvl{args.level}"
+    tag = f"{source}{'_smoke' if args.smoke else ''}_lvl{args.level}{'' if args.noise == 0.1 else f'_noise{args.noise}'}"
     g0 = load_graph(processed_path(source, args.smoke))
     seeds = ([int(s) for s in args.seeds.split(",")] if args.seeds
              else cfg["smoke"]["seeds"] if args.smoke else cfg["seeds"][:3])
@@ -74,7 +83,7 @@ def main():
         attacked = [k for k in plan["test"] if k >= args.attack_from]
         for scen in args.scenarios.split(","):
             level = args.level if scen == "attack" else 0.0
-            g, w, inj = inject_camouflage(g0, w0, plan["train"], attacked, level, seed)
+            g, w, inj = inject_camouflage(g0, w0, plan["train"], attacked, level, seed, args.noise)
             train_idx = np.where(np.isin(w, plan["train"]))[0]
             scores = cosine_consistency(g.x, g.edges, train_idx)
             same = {r: w[e[0]] == w[e[1]] for r, e in g.edges.items()}
