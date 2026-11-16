@@ -9,8 +9,9 @@ individual (seed, wave) pairs in which the difference is positive.
   * loop:      deployed - control and deployed - incumbent, per self-training variant, on the waves
                after the first retrain (attack scenario)
 
-  python scripts/12_stats.py --tag mat
-Writes outputs/tables/stats_rewiring_<tag>_waves.csv and stats_loop_<tag>_lvl<level>.csv.
+  python scripts/12_stats.py --tag mat [--level 0.2] [--noise 0.1]
+Writes outputs/tables/stats_rewiring_<tag>_waves.csv and stats_loop_<tag>_lvl<level>[_noise<noise>].csv
+(the suffix matches the loop run's tables from scripts/11).
 """
 from __future__ import annotations
 
@@ -56,8 +57,8 @@ def rewiring(tag: str) -> pd.DataFrame | None:
     return paired_summary(pd.concat(out), ["model", "scorer"])
 
 
-def loop(tag: str, level: str) -> pd.DataFrame | None:
-    p = TAB / f"graph_loop_windows_{tag}_lvl{level}.csv"
+def loop(tag: str, suffix: str) -> pd.DataFrame | None:
+    p = TAB / f"graph_loop_windows_{tag}_{suffix}.csv"
     if not p.exists():
         return None
     w = pd.read_csv(p)
@@ -72,14 +73,16 @@ def loop(tag: str, level: str) -> pd.DataFrame | None:
 
 def main():
     p = argparse.ArgumentParser(); p.add_argument("--tag", default="mat"); p.add_argument("--level", default="0.2")
+    p.add_argument("--noise", default="0.1", help="feature noise of the loop run (scripts/11 --noise)")
     a = p.parse_args()
     r = rewiring(a.tag)
     if r is not None:
         r.to_csv(TAB / f"stats_rewiring_{a.tag}_waves.csv", index=False)
         print(r.round(4).to_string(index=False))
-    lp = loop(a.tag, a.level)
+    suffix = f"lvl{a.level}{'' if float(a.noise) == 0.1 else f'_noise{a.noise}'}"
+    lp = loop(a.tag, suffix)
     if lp is not None:
-        lp.to_csv(TAB / f"stats_loop_{a.tag}_lvl{a.level}.csv", index=False)
+        lp.to_csv(TAB / f"stats_loop_{a.tag}_{suffix}.csv", index=False)
         print(lp.round(4).to_string(index=False))
 
 

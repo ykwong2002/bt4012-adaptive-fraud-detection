@@ -1,4 +1,4 @@
-.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-all figures all
+.PHONY: setup test lint data eda llm-score distil feature-edges train drift selftrain adversarial graph-adversarial graph-scorers rur-scorer graph-loop graph-loop-hard graph-all figures all
 
 UV ?= uv
 PY  = $(UV) run python
@@ -74,6 +74,14 @@ graph-loop:
 	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
 	$(PY) scripts/12_stats.py --tag mat
+
+# harder attack: injected features further from the fraud templates (noise in training sd). At the
+# default 0.1 the incumbent is not hurt by the injection; this run checks whether it can be.
+HARD_NOISE ?= 1.0
+graph-loop-hard:
+	$(PY) scripts/11_graph_loop.py --source mat --level 0.2 --noise $(HARD_NOISE)
+	$(PY) scripts/12_stats.py --tag mat --level 0.2 --noise $(HARD_NOISE)
+	$(PY) scripts/10_figures.py
 
 # every reported number and figure (graph-only track, D18), from a fresh clone
 graph-all: data
