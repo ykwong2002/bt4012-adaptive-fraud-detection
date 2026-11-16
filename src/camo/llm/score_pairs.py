@@ -43,6 +43,9 @@ def sample_pairs(edges: dict[str, np.ndarray], eligible: np.ndarray, emb: np.nda
 
 def build_pair_requests(pairs: pd.DataFrame, node_table: pd.DataFrame, model: str,
                         n_retest: int = 0, seed: int = 0) -> list[dict]:
+    """Forward requests (swap=0) for `pairs`; with n_retest > 0 also the swapped requests for a random
+    subset (kept for callers that score a sample in one go; scripts/04 draws the subset itself so it
+    stays fixed when part of the sample is already cached)."""
     txt = node_table["text"].astype(str).to_numpy(); rid = node_table["review_id"].to_numpy()
     reqs = []
     for p in pairs.itertuples(index=False):
@@ -50,11 +53,16 @@ def build_pair_requests(pairs: pd.DataFrame, node_table: pd.DataFrame, model: st
         reqs.append(make_request(cid, model, pair_system(p.relation), pair_user_message(txt[p.u_node], txt[p.v_node]), PAIR_SCHEMA))
     if n_retest:
         rng = np.random.default_rng(seed)
-        for i in rng.choice(len(pairs), min(n_retest, len(pairs)), replace=False):
-            p = pairs.iloc[i]
-            cid = f"pair-{p.relation}-{rid[p.u_node]}-{rid[p.v_node]}-1"
-            reqs.append(make_request(cid, model, pair_system(p.relation), pair_user_message(txt[p.v_node], txt[p.u_node]), PAIR_SCHEMA))
+        sub = pairs.iloc[rng.choice(len(pairs), min(n_retest, len(pairs)), replace=False)]
+        reqs += swapped_requests(sub, node_table, model)
     return reqs
+
+
+def swapped_requests(pairs: pd.DataFrame, node_table: pd.DataFrame, model: str) -> list[dict]:
+    """Test-retest requests (swap=1): the same pairs with the two reviews in the opposite order."""
+    txt = node_table["text"].astype(str).to_numpy(); rid = node_table["review_id"].to_numpy()
+    return [make_request(f"pair-{p.relation}-{rid[p.u_node]}-{rid[p.v_node]}-1", model, pair_system(p.relation),
+                         pair_user_message(txt[p.v_node], txt[p.u_node]), PAIR_SCHEMA) for p in pairs.itertuples(index=False)]
 
 
 def row_from_result(custom_id: str, data: dict | None, status: str, model: str) -> dict:
