@@ -70,7 +70,8 @@ noisy-oracle curve as the reference and paired 95 % intervals (D17). Second pill
 - Report uncertainty as paired seed-level 95 % intervals (`12_stats.py`), not seed std.
 - External code consulted or adapted (CARE-GNN, DGL loader, Nash-Detect features) goes in
   `docs/acknowledgements.md`. Generative-AI use is acknowledged in the report per module rules.
-- `ANTHROPIC_API_KEY` lives only in `.env`. No LLM batch is submitted without the owner's go-ahead;
+- Anthropic credentials live only in `.env` (`ANTHROPIC_API_KEY`) or in the owner's `ant auth login`
+  profile; never in the repo. No LLM batch is submitted without the owner's go-ahead;
   run `scripts/04_llm_score.py --dry-run` first and quote the cost.
 - Never commit `data/raw/`, `.env`, or `outputs/runs/`.
 

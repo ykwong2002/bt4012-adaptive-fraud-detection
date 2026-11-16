@@ -26,14 +26,20 @@ from camo.llm.mock import mock_pair_score, mock_review_fields
 
 
 def client():
+    """Anthropic client. Credentials come from `.env` (ANTHROPIC_API_KEY) or from whatever the SDK
+    resolves on its own (env vars, an `ant auth login` profile); the key itself never enters the repo."""
     from dotenv import load_dotenv
 
     load_dotenv(ROOT / ".env")
-    if not os.environ.get("ANTHROPIC_API_KEY"):
-        raise SystemExit("ANTHROPIC_API_KEY not set; copy .env.example to .env (or use --mock for smoke runs)")
     import anthropic
 
-    return anthropic.Anthropic()
+    c = anthropic.Anthropic()
+    try:
+        c.models.list(limit=1)
+    except anthropic.AuthenticationError as e:
+        raise SystemExit(f"no usable Anthropic credential: {e}. Put ANTHROPIC_API_KEY in .env or run `ant auth login` "
+                         "(or use --mock for smoke runs)") from e
+    return c
 
 
 def run_stage(args, requests, cache, row_fn, model, state_path, mock_fn=None):
