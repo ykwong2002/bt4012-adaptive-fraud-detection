@@ -49,6 +49,7 @@ incomplete), about 3 h on a laptop CPU. Needs the raw release under `data/raw/ye
 | variable summary: type, meaning, use, leakage control, legit-vs-fraud effect size | `uv run python scripts/03b_variables.py` | `variables_raw.csv` |
 | LLM review fields + pair judgements (cached; `--dry-run` quotes the cost of anything missing) | `uv run python scripts/04_llm_score.py --source raw --collect` | `data/llm/*.parquet` |
 | distilled edge scorer + diagnostics (D4, D15) | `uv run python scripts/05_distil_edges.py --source raw`, `05c_edge_diagnostics.py --source raw` | `distil_metrics_raw.csv`, `edge_auc_centred_raw.csv`, `data/processed/edge_scores_raw.npz` |
+| why the text scorer is at chance around fraud: LLM pair judgements by pair type (D22; example texts go to git-ignored `data/processed/`) | `uv run python scripts/05d_pair_case_study.py` | `pair_case_study_*_raw.csv` |
 | 4 models × 5 seeds, raw graph and soft / softrank / hard refined graphs | `uv run python scripts/06_train.py --source raw [--weights data/processed/edge_scores_raw.npz --mode soft\|softrank\|hard --tau 0.5]` | `results_raw_*.csv` |
 | drift monitor (+ same-window control) | `uv run python scripts/07_drift.py --source raw [--same-window]` | `drift_*_raw*.csv` |
 | alarm-triggered self-training + bias audit, raw and refined graph | `uv run python scripts/08_selftrain.py --source raw [--weights data/processed/edge_scores_raw.npz]` | `selftrain_*_raw_*.csv` |

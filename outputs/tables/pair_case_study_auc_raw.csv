@@ -1,0 +1,24 @@
+kind,relation,name,n,auc_global,auc_fraud_centred
+pair judgement,rsr,relative_fit,6000,0.5564770787261181,0.548415073804503
+pair judgement,rtr,relative_fit,6000,0.5606262337106522,0.5063347793155684
+pair judgement,rur,relative_fit,6000,0.47732975455457893,0.4303519061583577
+single review: LLM text field,-,specificity,47532,0.6484548545416999,
+single review: LLM text field,-,experiential_evidence,47532,0.6161844902765483,
+single review: LLM text field,-,generic_praise,47532,0.5616309426337893,
+single review: LLM text field,-,promotional_tone,47532,0.5140841251059991,
+single review: LLM text field,-,first_person_detail,47532,0.594789257413979,
+single review: LLM text field,-,named_concretes,47532,0.6395874332759753,
+single review: behaviour (PIT),-,u_n_prev,47532,0.7174686665861365,
+single review: behaviour (PIT),-,u_mean_rating_prev,47532,0.511972825010319,
+single review: behaviour (PIT),-,u_rating_dev_prev,47532,0.5671603900677967,
+single review: behaviour (PIT),-,u_days_since_prev,47532,0.6581912694566306,
+single review: behaviour (PIT),-,u_sameday_n,47532,0.5164404342976168,
+single review: behaviour (PIT),-,u_first_review,47532,0.6855239946595705,
+single review: behaviour (PIT),-,p_n_prev,47532,0.5094305249758894,
+single review: behaviour (PIT),-,p_mean_rating_prev,47532,0.5046444876925007,
+single review: behaviour (PIT),-,rating_dev_p,47532,0.5083062671147196,
+single review: behaviour (PIT),-,rating_extreme,47532,0.5738387052256259,
+single review: behaviour (PIT),-,p_rate_30d,47532,0.5157390254302091,
+single review: text style (PIT),-,text_len_log,47532,0.6267305979377181,
+single review: text style (PIT),-,caps_ratio,47532,0.5063256333831436,
+single review: text style (PIT),-,excl_count,47532,0.5116591875666616,

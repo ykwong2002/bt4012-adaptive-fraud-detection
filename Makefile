@@ -96,6 +96,7 @@ raw-all:
 	for m in soft softrank; do $(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode $$m; done
 	$(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode hard --tau 0.5
 	$(PY) scripts/05c_edge_diagnostics.py --source raw
+	$(PY) scripts/05d_pair_case_study.py
 	$(PY) scripts/07_drift.py --source raw
 	$(PY) scripts/07_drift.py --source raw --same-window
 	$(PY) scripts/08_selftrain.py --source raw
