@@ -62,7 +62,7 @@ def test_injection_leaves_training_untouched_and_links_no_future():
     np.testing.assert_array_equal(tr0, tr1)
     for r in g.edges:
         np.testing.assert_array_equal(f0[0].edges[r], f1[0].edges[r])
-    for r, e in gi.edges.items():
+    for e in gi.edges.values():
         assert (e[0] < e[1]).all()
         new = e[:, e.shape[1] - (e[1] >= g.n).sum():]
         assert (new[1] >= g.n).all() and (new[0] < g.n).all()      # injected nodes link only to clean nodes

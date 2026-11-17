@@ -17,10 +17,10 @@ import numpy as np
 import pandas as pd
 from _common import ROOT, load_config, parser, processed_path, resolve_source
 
-from camo.data.load_mat import load_graph
-from camo.eval.runlog import RunLog
 from camo.data.features_pit import FEATURES
+from camo.data.load_mat import load_graph
 from camo.drift.monitor import run_monitor
+from camo.eval.runlog import RunLog
 from camo.eval.splits import equal_count_windows, temporal_plan
 from camo.selftrain.loop import run_selftrain, run_triggered
 

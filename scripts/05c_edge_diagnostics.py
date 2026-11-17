@@ -32,7 +32,7 @@ def centred_rows(name: str, edges: dict, scores: dict, y: np.ndarray) -> list[di
         lg = (y[e[0]] == 0) | (y[e[1]] == 0)
         ff = (y[e[0]] == 1) & (y[e[1]] == 1)
 
-        def auc(m):
+        def auc(m, same=same, s=s):
             return float(roc_auc_score(same[m], s[m])) if 0 < same[m].sum() < m.sum() else np.nan
 
         rank = rankdata(s) / len(s)
