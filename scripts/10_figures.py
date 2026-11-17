@@ -120,6 +120,82 @@ def scorer_curve(tag):
     fig.tight_layout(); fig.savefig(FIG / f"fig_scorer_curve_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
+SCORER_MARKERS = {"feature": "s", "cosine": "^", "rur_profile": "D"}
+
+
+def scorer_auc(source, rels=("rsr", "rtr")):
+    """Global and fraud-centred edge AUC per scorer on the relations camouflage breaks, edge-weighted;
+    per-seed scorers (<name>_w<k>) are averaged over seeds."""
+    d = read(f"edge_auc_centred_{source}.csv")
+    if d is None:
+        return None
+    d = d[d["relation"].isin(rels)].copy()
+    d["scorer"] = d["scorer"].str.replace(r"_w\d+$", "", regex=True)
+    out = {s: {c: np.average(g[c], weights=g["edges"]) for c in ("auc_global", "auc_fraud_centred")}
+           for s, g in d.groupby("scorer")}
+    return pd.DataFrame.from_dict(out, orient="index")
+
+
+def scorer_bar(tag="mat_waves", text_source="raw"):
+    """Reweighting gain (paired 95 % CI) against edge AUC around fraud nodes (D15). Real scorers are
+    drawn at their fraud-centred (filled) and global (hollow) AUC; the YelpZip text scorer is marked on
+    the x-axis only, since its model results are on another dataset. Writes scorer_bar_<tag>.csv with
+    the curve's predicted gain at each real scorer's position on both axes."""
+    from matplotlib.lines import Line2D
+
+    st, auc = read(f"stats_rewiring_{tag}.csv"), scorer_auc(tag.split("_")[0])
+    if st is None or auc is None:
+        return
+    t = st.merge(auc, left_on="scorer", right_index=True)
+    text = scorer_auc(text_source)
+    text_x = text.loc["text_distilled", "auc_fraud_centred"] if text is not None and "text_distilled" in text.index else None
+
+    rows, models = [], sorted(t["model"].unique())
+    fig, axes = plt.subplots(1, len(models), figsize=(4.8 * len(models), 3.9))
+    for ax, m in zip(np.atleast_1d(axes), models):
+        sub = t[t["model"] == m]
+        noisy = sub[sub["scorer"].str.startswith("noisy")].sort_values("auc_fraud_centred")
+        cx, cy = noisy["auc_fraud_centred"].to_numpy(), noisy["mean_diff"].to_numpy()
+        ax.fill_between(cx, noisy["ci95_low"], noisy["ci95_high"], color="k", alpha=0.12, lw=0)
+        ax.plot(cx, cy, color="k", lw=2, marker="o", ms=6)
+        for r in sub[~sub["scorer"].str.startswith("noisy")].itertuples():
+            c, mk = SCORER_COLORS.get(r.scorer, "grey"), SCORER_MARKERS.get(r.scorer, "s")
+            ax.plot([r.auc_global, r.auc_fraud_centred], [r.mean_diff] * 2, color=c, lw=1, alpha=0.6)
+            ax.plot(r.auc_global, r.mean_diff, marker=mk, ms=8, mfc="white", mec=c, mew=1.5, ls="none")
+            ax.errorbar(r.auc_fraud_centred, r.mean_diff, yerr=[[r.mean_diff - r.ci95_low], [r.ci95_high - r.mean_diff]],
+                        marker=mk, ms=8, color=c, capsize=3, ls="none")
+            below = r.scorer == "rur_profile"
+            ax.annotate(r.scorer, (r.auc_fraud_centred, r.ci95_low if below else r.ci95_high),
+                        xytext=(0, -4 if below else 4), textcoords="offset points", fontsize=7, ha="center",
+                        va="top" if below else "bottom")
+            rows.append({"model": m, "scorer": r.scorer, "auc_global": r.auc_global,
+                         "auc_fraud_centred": r.auc_fraud_centred, "gain": r.mean_diff,
+                         "ci95_low": r.ci95_low, "ci95_high": r.ci95_high,
+                         "curve_gain_at_global": np.interp(r.auc_global, cx, cy),
+                         "curve_gain_at_fraud_centred": np.interp(r.auc_fraud_centred, cx, cy)})
+        if text_x is not None:
+            ax.axvline(text_x, color="k", ls="-.", lw=1)
+            ax.annotate("YelpZip text scorer", (text_x, 0.97), xycoords=ax.get_xaxis_transform(), xytext=(-3, 0),
+                        textcoords="offset points", rotation=90, va="top", ha="right", fontsize=7)
+        ax.axhline(0, color="grey", ls="--", lw=1)
+        ax.grid(alpha=0.3, lw=0.5)
+        ax.set_title(MODEL_NAMES.get(m, m))
+        ax.set_xlabel("edge AUC on R-S-R / R-T-R, edges touching a fraud node")
+        ax.set_ylabel("AUC-PR gain over raw graph")
+    handles = [Line2D([], [], color="k", lw=2, marker="o", label="noisy oracle (simulated), 95% CI"),
+               Line2D([], [], color="grey", marker="s", ls="none", label="real scorer at fraud-centred AUC"),
+               Line2D([], [], color="grey", marker="s", mfc="white", ls="none", label="same scorer at global AUC")]
+    np.atleast_1d(axes)[0].legend(handles=handles, fontsize=7, loc="upper left", bbox_to_anchor=(0.1, 1.0))
+    fig.suptitle(f"Reweighting gain vs edge quality around fraud nodes ({tag}, paired 95% CI over seeds)", y=1.02)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_scorer_bar_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
+
+    out = pd.DataFrame(rows)
+    out.to_csv(TAB / f"scorer_bar_{tag}.csv", index=False)
+    for axis in ("global", "fraud_centred"):
+        err = (out["gain"] - out[f"curve_gain_at_{axis}"]).abs().mean()
+        print(f"scorer bar: mean |actual - curve| gain with {axis} AUC = {err:.4f}")
+
+
 def distil(tag):
     m = read(f"distil_metrics_{tag}.csv")
     if m is None:
@@ -289,7 +365,7 @@ def main():
         fn(a.tag)
     adversarial(a.tag, "graph_adversarial", "model")       # graph-only track (D13), any source
     if a.tag == "raw":
-        headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves")
+        headline("mat"); headline("mat_waves"); selftrain("mat"); scorer_curve("mat"); scorer_curve("mat_waves"); scorer_bar("mat_waves")
         adversarial("mat", "graph_adversarial", "model")
         # every loop run that exists (level, and noise when it differs from the default 0.1)
         for f in sorted(TAB.glob("graph_loop_windows_mat_lvl*.csv")):

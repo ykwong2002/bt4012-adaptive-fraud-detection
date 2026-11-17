@@ -2,6 +2,18 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D21 2026-11-17 The scorer bar is read on fraud-centred edge AUC, and it is still optimistic
+`fig_scorer_bar_mat_waves.png` (`10_figures.scorer_bar`, table `scorer_bar_mat_waves.csv`) plots the
+paired reweighting gain (D17) against fraud-centred edge AUC on R-S-R / R-T-R (D15), with each real
+`.mat` scorer drawn at both its fraud-centred and its global AUC, and the YelpZip text scorer's
+fraud-centred AUC (0.50) marked on the x-axis only. Moving to the fraud-centred axis removes the large
+miss for the R-U-R profile scorer (curve +0.044 / +0.049 at global 0.69, actual −0.012 / +0.010; at
+fraud-centred 0.48 the curve gives −0.006), but the curve over-predicts feature and cosine (+0.016 to
++0.033 at 0.62–0.64, actual −0.003 to +0.011). Mean |actual − curve| is 0.017 fraud-centred vs 0.020
+global. Reading: fraud-centred AUC is the right axis, but real errors concentrate on the edges that
+matter, so the curve is an upper bound on the gain at a given AUC, not a prediction (as D15 warned).
+Rejected: plotting YelpZip model gains on the `.mat` axes (never mix datasets in one figure).
+
 ## D20 2026-11-16 Text-track results on the YelpZip slice; YelpZip becomes the headline dataset
 The full proposal pipeline (04 → 05 → 06 raw vs refined → 07 → 08 → 09, `make raw-all`) ran on the
 D19 slice: 47,512 review fields and 18,480 pair judgements from `claude-haiku-5-5` (Message Batches,
