@@ -55,7 +55,7 @@ incomplete), about 3 h on a laptop CPU. Needs the raw release under `data/raw/ye
 | alarm-triggered self-training + bias audit, raw and refined graph | `uv run python scripts/08_selftrain.py --source raw [--weights data/processed/edge_scores_raw.npz]` | `selftrain_*_raw_*.csv` |
 | camouflage injection with recovery | `uv run python scripts/09_adversarial.py --source raw --recover` | `adversarial_*_raw.csv` |
 | paired intervals; figures | `uv run python scripts/12_stats.py --tag raw`, `10_figures.py --tag raw` | `stats_*_raw*.csv`, `outputs/figures/fig_*_raw*.png` |
-| operating point per window: reviews flagged, fraud caught, reviews checked per fraud found | `uv run python scripts/13_business.py` | `business_raw.csv` |
+| operating point per window: reviews flagged, fraud caught, reviews checked per fraud found | `uv run python scripts/14_business.py` | `business_raw.csv` |
 
 **YelpChi graph-only track** (supporting, D11–D17): `make graph-all` runs every step below in order
 (several hours on a laptop CPU; the scorer curve and the loop dominate). Each step can also be run on

@@ -74,7 +74,7 @@ graph-loop:
 	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
 	$(PY) scripts/12_stats.py --tag mat
-	$(PY) scripts/13_business.py
+	$(PY) scripts/14_business.py
 
 # harder attack: injected features further from the fraud templates (noise in training sd). At the
 # default 0.1 the incumbent is not hurt by the injection; this run checks whether it can be.
@@ -103,7 +103,7 @@ raw-all:
 	$(PY) scripts/08_selftrain.py --source raw --weights data/processed/edge_scores_raw.npz
 	$(PY) scripts/09_adversarial.py --source raw --recover
 	$(PY) scripts/12_stats.py --tag raw
-	$(PY) scripts/13_business.py
+	$(PY) scripts/14_business.py
 	$(PY) scripts/10_figures.py --tag raw
 
 # every reported number and figure (graph-only track, D18), from a fresh clone

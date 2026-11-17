@@ -37,7 +37,7 @@ def main():
     p.add_argument("--variant", default="per_class", help="self-training variant whose deployed model is reported")
     p.add_argument("--level", default="0.2", help="injection level of the .mat loop table")
     args = p.parse_args()
-    log = RunLog("13_business", vars(args))
+    log = RunLog("14_business", vars(args))
     inputs = {"raw": TAB / "selftrain_windows_raw_raw_graph.csv",
               f"mat_lvl{args.level}": TAB / f"graph_loop_windows_mat_lvl{args.level}.csv"}
     written = []
