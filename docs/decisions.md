@@ -2,6 +2,19 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D23 2026-11-18 The report's reading of the YelpZip results supersedes D20(b); cache counts corrected
+The final report reads the text-track monitor more cautiously than D20(b). (1) The validation window
+(window 3) is flagged, and the window-4 alarm relies on that flag, so it is a false flag rather than
+"0 false alarms" (`drift_monitor_raw.csv`). (2) A monitor on the LLM fields alone also flags windows 4-7
+(KS 0.08-0.13 against 0.05, `drift_signals_raw.csv`), so the alarm cannot be credited to text
+consistency h itself. (3) Under the same 90 % rule on AUROC, only windows 6 and 7 count as degraded
+(`results_raw_raw_graph_summary.csv`), so the AUC-PR degradation label is generous for windows 4-5.
+Also: D20's "47,512 review fields and 18,480 pair judgements" were batch-only counts; the committed
+caches hold 47,532 review rows and 18,500 pair rows (18,000 judgements + 500 swapped-order re-tests).
+D20's "distillation loses nothing" is softened by D22 (LLM 0.55 against distilled 0.50 fraud-centred
+AUC on R-S-R). The EM prior estimate (Saerens) sits at its 0.0001 floor in 68 of 75 YelpZip retrains
+(`selftrain_windows_raw_raw_graph.csv`), so it is not informative on this slice.
+
 ## D22 2026-11-18 Why the text scorer is at chance around fraud: the signal is per review, not per edge
 `05d_pair_case_study.py` splits the 18,000 cached LLM pair judgements (prompt v2) by pair type
 (`pair_case_study_*_raw.csv`). (1) The LLM judgement itself is at chance around fraud nodes
