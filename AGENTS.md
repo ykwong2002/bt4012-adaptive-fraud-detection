@@ -21,14 +21,16 @@ track. The claim, in four parts (numbers in `docs/decisions.md` D20 and D16/D17)
    CatBoost +0.005 AUC-PR (interval excludes 0), nothing for the GNNs. Its fraud-centred edge AUC is
    0.50, below the ~0.6 bar the `.mat` noisy-oracle curve sets; the right yardstick is fraud-centred,
    not global, edge AUC (D15). Two datasets, one explanation.
-2. **The label-free text-consistency monitor works on real drift.** It flags every degraded test window
-   with 0 false alarms and latency 0 while the feature monitor flags none, and survives the same-window
-   control. On `.mat` it alarms one wave after a 20 % injection and misses 5–10 %.
-3. **Confidence-based self-training does collapse toward the normal class, and quotas fix it**
-   (professor Q2): naive pseudo-labels end at 0.07 % (YelpZip) / 1.9 % (`.mat`) positives, per_class and
-   prior_match hold the prior. On `.mat` the non-collapsing variants recover +0.03 over the control; on
-   YelpZip's natural drift there is no headroom (oracle +0.018) and the promotion guard blocks ~90 % of
-   challengers, which is the guard working.
+2. **The label-free text-consistency monitor is sensitive, but not shown to be reliable.** It alarms in
+   every degraded test window while the feature monitor flags none (from window 5 under the same-window
+   control), but the healthy validation window is also flagged and a monitor on the LLM fields alone
+   would have fired too (D23). On `.mat` it alarms one wave after a 20 % injection and misses 5–10 %.
+3. **Confidence-based self-training does collapse toward the normal class, and a fixed quota stops it**
+   (professor Q2): naive pseudo-labels average 0.07 % (YelpZip) / end at 1.9 % (`.mat`) positives;
+   prior_match holds the prior by construction, while per_class holds it only on average (10 of 15
+   YelpZip retrains flagged). On `.mat` the non-collapsing variants recover +0.03 over the control; on
+   YelpZip's natural drift there is no headroom (oracle +0.018), and the promotion guard blocked 21 of
+   the 31 challengers that won on the probe set, so whether blocking helped cannot be told.
 4. **Camouflage that copies legitimate text and users defeats the label-free loop.** Injected recall
    ≈ 0, the monitor cannot separate the attack from natural drift, nothing is promoted; the oracle with
    the new labels reaches 0.78, so the labels an analyst provides must feed training, not only promotion.

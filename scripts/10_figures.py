@@ -45,22 +45,36 @@ def headline(tag):
         return
     df = df[df["fold"].str.startswith("test_w")]
     df["window"] = df["fold"].str.split("_w").str[1].astype(int)
-    models = sorted(df["model"].unique())
-    fig, axes = plt.subplots(1, len(models), figsize=(4.2 * len(models), 3.4), sharey=True)
-    for ax, m in zip(np.atleast_1d(axes), models):
+    order = ["catboost", "wsage", "care", "ae"]
+    # the autoencoder uses no graph, so raw and refined coincide; it is left to the results table
+    models = [m for m in order if m in set(df["model"]) and m != "ae"] + sorted(set(df["model"]) - set(order))
+    ncol = min(len(models), 3)
+    nrow = int(np.ceil(len(models) / ncol))
+    fig, axes = plt.subplots(nrow, ncol, figsize=(4.2 * ncol, 2.9 * nrow), squeeze=False)
+    for ax, m in zip(axes.ravel(), models):
         for gname, sub in df[df["model"] == m].groupby("graph"):
             s = sub.groupby("window")["auc_pr"].agg(["mean", "std"])
-            ax.errorbar(s.index, s["mean"], yerr=s["std"].fillna(0), marker="o", capsize=3, label=gname)
-        ax.set_title(m); ax.set_xlabel("test window"); ax.set_ylabel("AUC-PR")
-        ax.legend(fontsize=8)
+            ax.errorbar(s.index, s["mean"], yerr=s["std"].fillna(0), marker="o", ms=4, capsize=3, label=GRAPH_NAMES.get(gname, gname))
+        ax.set_title(MODEL_NAMES.get(m, m)); ax.set_xlabel("test window"); ax.set_ylabel("AUC-PR")
+        ax.set_xticks(sorted(df["window"].unique())); ax.grid(alpha=0.3)
+    for ax in axes.ravel()[len(models):]:
+        ax.axis("off")
+    h, lab = axes.ravel()[0].get_legend_handles_labels()
+    fig.legend(h, lab, loc="lower center", ncol=len(lab), fontsize=8, bbox_to_anchor=(0.5, -0.08))
     proto = {"waves": "random arrival waves"}.get(df["protocol"].iloc[0], "temporal windows")
-    fig.suptitle(f"AUC-PR per test window, {' vs '.join(sorted(df['graph'].unique()))} ({tag}: {proto}, mean ± std over seeds)", y=1.02)
+    fig.suptitle(f"{DATASET.get(tag, tag)}: test AUC-PR per window, raw vs refined graphs ({proto}, mean ± std over seeds)", fontsize=10)
     fig.tight_layout(); fig.savefig(FIG / f"fig_headline_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
 SCORER_COLORS = {"feature": "#1f77b4", "cosine": "#ff7f0e", "rur_profile": "#2ca02c"}
 SCORER_LABEL_OFFSET = {"feature": (-8, 8, "right"), "cosine": (8, -12, "left"), "rur_profile": (8, -12, "left")}
 MODEL_NAMES = {"wsage": "WeightedSAGE", "catboost": "CatBoost", "care": "CARE-static", "ae": "Autoencoder"}
+# reader-facing names for figure titles and legends (no internal tags)
+DATASET = {"raw": "YelpZip slice", "mat": "YelpChi.mat", "mat_waves": "YelpChi.mat, arrival waves",
+           "mat_lvl0.2": "YelpChi.mat, 20% injection"}
+GRAPH_NAMES = {"raw_graph": "raw graph", "refined_soft": "soft", "refined_softrank": "softrank",
+               "refined_hard_tau0.5": "hard (τ = 0.5)"}
+SCORER_NAMES = {"feature": "feature link model", "cosine": "feature cosine", "rur_profile": "user profile"}
 
 
 def scorer_curve(tag):
@@ -164,9 +178,10 @@ def scorer_bar(tag="mat_waves", text_source="raw"):
             ax.plot(r.auc_global, r.mean_diff, marker=mk, ms=8, mfc="white", mec=c, mew=1.5, ls="none")
             ax.errorbar(r.auc_fraud_centred, r.mean_diff, yerr=[[r.mean_diff - r.ci95_low], [r.ci95_high - r.mean_diff]],
                         marker=mk, ms=8, color=c, capsize=3, ls="none")
-            below = r.scorer == "rur_profile"
-            ax.annotate(r.scorer, (r.auc_fraud_centred, r.ci95_low if below else r.ci95_high),
-                        xytext=(0, -4 if below else 4), textcoords="offset points", fontsize=7, ha="center",
+            # label placement: feature to the upper left, cosine to the upper right, user profile below right
+            dx, ha, below = {"feature": (-3, "right", False), "cosine": (3, "left", False)}.get(r.scorer, (4, "left", True))
+            ax.annotate(SCORER_NAMES.get(r.scorer, r.scorer), (r.auc_fraud_centred, r.ci95_low if below else r.ci95_high),
+                        xytext=(dx, -4 if below else 4), textcoords="offset points", fontsize=7, ha=ha,
                         va="top" if below else "bottom")
             rows.append({"model": m, "scorer": r.scorer, "auc_global": r.auc_global,
                          "auc_fraud_centred": r.auc_fraud_centred, "gain": r.mean_diff,
@@ -180,13 +195,13 @@ def scorer_bar(tag="mat_waves", text_source="raw"):
         ax.axhline(0, color="grey", ls="--", lw=1)
         ax.grid(alpha=0.3, lw=0.5)
         ax.set_title(MODEL_NAMES.get(m, m))
-        ax.set_xlabel("edge AUC on R-S-R / R-T-R, edges touching a fraud node")
+        ax.set_xlabel("fraud-centred edge AUC on R-S-R / R-T-R")
         ax.set_ylabel("AUC-PR gain over raw graph")
     handles = [Line2D([], [], color="k", lw=2, marker="o", label="noisy oracle (simulated), 95% CI"),
                Line2D([], [], color="grey", marker="s", ls="none", label="real scorer at fraud-centred AUC"),
                Line2D([], [], color="grey", marker="s", mfc="white", ls="none", label="same scorer at global AUC")]
     np.atleast_1d(axes)[0].legend(handles=handles, fontsize=7, loc="upper left", bbox_to_anchor=(0.1, 1.0))
-    fig.suptitle(f"Reweighting gain vs edge quality around fraud nodes ({tag}, paired 95% CI over seeds)", y=1.02)
+    fig.suptitle(f"Re-weighting gain vs edge AUC around fraud reviews ({DATASET.get(tag, tag)}, paired 95% CI over seeds)", y=1.02)
     fig.tight_layout(); fig.savefig(FIG / f"fig_scorer_bar_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
     out = pd.DataFrame(rows)
@@ -227,18 +242,32 @@ def drift(tag):
     m = read(f"drift_monitor_{tag}.csv")
     if m is None:
         return
+    # A window is flagged when PSI or KS exceeds its calibrated threshold, so plot each statistic as a
+    # multiple of its threshold (1 = flag line); the same-window control is dashed when it exists.
+    sw = read(f"drift_monitor_{tag}_samewin.csv")
     fig, ax = plt.subplots(figsize=(7, 3.4)); ax2 = ax.twinx()
-    ax.plot(m["window"], m["psi_mean"], marker="o", color="C0", label=f"PSI, {m['monitor'].iloc[0]} (label-free)")
-    if "psi_thr" in m:
-        ax.plot(m["window"], m["psi_thr"], color="C0", ls=":", lw=1, label="calibrated threshold")
-    ax2.plot(m["window"], m["auc_pr"], marker="s", color="C3", label="incumbent AUC-PR (labelled)")
+    ax.plot(m["window"], m["ks_max"] / m["ks_thr"], marker="o", color="C0", label="KS / threshold")
+    # validation AUC-PR of the comparator (WeightedSAGE, raw graph) defines the degradation line
+    res = read(f"results_{tag}_raw_graph.csv")
+    val = res[(res["model"] == "wsage") & (res["fold"] == "val")]["auc_pr"].mean() if res is not None else np.nan
+    ax.plot(m["window"], m["psi_mean"] / m["psi_thr"], marker="^", color="C2", label="PSI / threshold")
+    if sw is not None:
+        ax.plot(sw["window"], sw["ks_max"] / sw["ks_thr"], marker="o", color="C0", ls="--", alpha=0.6,
+                label="KS / threshold, same-window control")
+    ax.axhline(1.0, color="k", ls=":", lw=1, label="flag line")
+    ax2.plot(m["window"], m["auc_pr"], marker="s", color="C3", label="WeightedSAGE AUC-PR (labelled)")
+    if np.isfinite(val):
+        ax2.plot([m["window"].min()], [val], marker="s", mfc="white", color="C3", ls="none", label="WeightedSAGE validation AUC-PR")
+        ax2.axhline(0.9 * val, color="C3", ls=":", lw=1.2, label="degradation line: 90% of validation")
     for w, a in zip(m["window"], m["alarm"]):
         if a:
-            ax.axvline(w, color="k", alpha=0.15, lw=6)
-    ax.set_xlabel("window"); ax.set_ylabel("PSI"); ax2.set_ylabel("AUC-PR")
+            ax.axvline(w, color="k", alpha=0.12, lw=8)
+    ax.set_xlabel("window (3 = validation, 4-7 = test)"); ax.set_ylabel("statistic / threshold"); ax2.set_ylabel("AUC-PR")
+    ax.set_xticks(m["window"])
     h1, l1 = ax.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
-    ax.legend(h1 + h2, l1 + l2, fontsize=8, loc="lower left"); ax.set_title("Drift monitor vs labelled comparator (shaded = alarm)")
-    fig.tight_layout(); fig.savefig(FIG / f"fig_drift_{tag}.png", dpi=150); plt.close(fig)
+    fig.legend(h1 + h2, l1 + l2, fontsize=7, loc="lower center", ncol=3, bbox_to_anchor=(0.5, -0.13))
+    ax.set_title(f"{DATASET.get(tag, tag)}: text-consistency monitor vs labelled AUC-PR (shaded = alarm)", fontsize=9)
+    fig.tight_layout(); fig.savefig(FIG / f"fig_drift_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
 def selftrain(tag):
@@ -293,17 +322,19 @@ def adversarial(tag, prefix="adversarial", by="graph"):
     prev = d.assign(prev=d["n_pos"] / d["n"]).groupby("level")["prev"].mean() if d is not None and {"n_pos", "n"} <= set(d.columns) else None
     fig, axes = plt.subplots(1, 3, figsize=(12, 3.2))
     for gname, sub in s.groupby(by):
-        axes[0].plot(sub["level"], sub["auc_pr"], marker="o", label=gname)
-        axes[1].plot(sub["level"], sub["auroc"], marker="o", label=gname)
-        axes[2].plot(sub["level"], sub["injected_recall"], marker="o", label=gname)
+        lab = {"raw_graph": "raw graph", "refined_soft": "refined graph (soft)"}.get(gname, MODEL_NAMES.get(gname, gname))
+        axes[0].plot(sub["level"], sub["auc_pr"], marker="o", label=lab)
+        axes[1].plot(sub["level"], sub["auroc"], marker="o", label=lab)
+        axes[2].plot(sub["level"], sub["injected_recall"], marker="o", label=lab)
     if prev is not None:
         axes[0].plot(prev.index, prev.values, "k--", lw=1, label="prevalence (random ranker)")
     axes[1].axhline(0.5, color="k", ls="--", lw=1, label="chance"); axes[2].axhline(0.10, color="k", ls="--", lw=1, label="chance (top 10 %)")
-    axes[0].set_title("AUC-PR, all test nodes"); axes[1].set_title("AUROC, all test nodes"); axes[2].set_title("injected-node recall@10%")
+    axes[0].set_title("AUC-PR, all test reviews"); axes[1].set_title("AUROC, all test reviews"); axes[2].set_title("injected-review recall in the top 10%")
     axes[2].set_ylim(bottom=0)
+    lo, hi = s["level"].min(), s["level"].max()
     for ax in axes:
-        ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=7)
-    fig.suptitle(f"Camouflage injection into the test windows ({tag}, mean over seeds and windows)", y=1.02)
+        ax.set_xlabel("injected fraction of window"); ax.legend(fontsize=7); ax.set_xlim(lo - 0.01, hi + 0.01)
+    fig.suptitle(f"Camouflage injection into the test windows ({DATASET.get(tag, tag)}, mean over seeds and windows)", y=1.02)
     fig.tight_layout(); fig.savefig(FIG / f"fig_{prefix}_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 
@@ -351,10 +382,10 @@ def graph_loop_rounds(tag):
         axes[0].plot(s.index, s["pos"], marker="o", label=v); axes[1].plot(s.index, s["rec"], marker="o", label=v)
     axes[0].axhline(r["prior"].mean(), color="k", ls="--", lw=1, label=f"training prior ({r['prior'].mean():.3f})")
     axes[0].set_title("positive share of the pseudo-labelled set"); axes[0].set_ylabel("share"); axes[0].set_ylim(0, None)
-    axes[1].set_title("minority recall on the probe labels"); axes[1].set_ylabel("recall at the prior's top-k")
+    axes[1].set_title("minority recall on the probe labels"); axes[1].set_ylabel("fraud recall in top k (k = prior × probe size)")
     for ax in axes:
         ax.set_xlabel("self-training round"); ax.grid(alpha=0.3, lw=0.5); ax.legend(fontsize=7)
-    fig.suptitle(f"Does confidence-based self-training drift toward the normal class? ({tag}, attack scenario)", y=1.02)
+    fig.suptitle(f"Does confidence-based self-training drift toward the normal class? ({DATASET.get(tag, tag)})", y=1.02)
     fig.tight_layout(); fig.savefig(FIG / f"fig_graph_loop_rounds_{tag}.png", dpi=150, bbox_inches="tight"); plt.close(fig)
 
 

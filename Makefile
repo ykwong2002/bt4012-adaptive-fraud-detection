@@ -49,6 +49,7 @@ graph-adversarial:                 # graph-only track (D13): arrival waves + nod
 
 figures:
 	$(PY) scripts/10_figures.py
+	$(PY) scripts/13_process_figure.py
 
 all: data eda train drift selftrain figures
 
@@ -105,8 +106,9 @@ raw-all:
 	$(PY) scripts/12_stats.py --tag raw
 	$(PY) scripts/14_business.py
 	$(PY) scripts/10_figures.py --tag raw
+	$(PY) scripts/13_process_figure.py
 
-# every reported number and figure (graph-only track, D18), from a fresh clone
+# YelpChi.mat supporting track (graph only, D18, D20): every reported `mat` number and figure, from a fresh clone
 graph-all: data
 	$(PY) scripts/02_build_graph.py --source mat
 	$(PY) scripts/03_eda.py --source mat

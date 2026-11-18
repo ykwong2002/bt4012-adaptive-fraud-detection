@@ -20,6 +20,8 @@ TAB = ROOT / "outputs" / "tables"
 FIG = ROOT / "outputs" / "figures"
 
 
+REL_NAMES = {"rur": "R-U-R", "rsr": "R-S-R", "rtr": "R-T-R"}
+
 def main():
     args = parser(__doc__).parse_args()
     cfg = load_config("base")
@@ -43,10 +45,12 @@ def main():
     fig, axes = plt.subplots(1, len(g.edges), figsize=(4 * len(g.edges), 3.2), sharey=True)
     for ax, (r, e) in zip(np.atleast_1d(axes), g.edges.items()):
         h = node_homophily(e, g.y, n)
-        for c, name in [(0, "legit"), (1, "fraud")]:
+        for c, name in [(0, "genuine"), (1, "fraud")]:
             vals = h[(g.y == c) & ~np.isnan(h)]
             ax.hist(vals, bins=20, range=(0, 1), density=True, alpha=0.6, label=f"{name} (n={vals.size})")
-        ax.set_title(f"{r.upper()}: node homophily"); ax.set_xlabel("fraction of same-label neighbours")
+        ax.set_title(f"{REL_NAMES.get(r, r.upper())}: node homophily"); ax.set_xlabel("share of same-label neighbours")
+        if ax is np.atleast_1d(axes)[0]:
+            ax.set_ylabel("density of reviews")
         ax.legend(fontsize=8)
     fig.tight_layout(); fig.savefig(FIG / f"eda_homophily_{tag}.png", dpi=150); plt.close(fig)
 
@@ -54,11 +58,11 @@ def main():
     fig, axes = plt.subplots(1, len(g.edges), figsize=(4 * len(g.edges), 3.2))
     for ax, (r, e) in zip(np.atleast_1d(axes), g.edges.items()):
         deg = np.bincount(e[0], minlength=n) + np.bincount(e[1], minlength=n)
-        for c, name in [(0, "legit"), (1, "fraud")]:
+        for c, name in [(0, "genuine"), (1, "fraud")]:
             d = np.sort(deg[g.y == c])
             ccdf = 1 - np.arange(d.size) / d.size
             ax.loglog(d + 1, ccdf, label=name)
-        ax.set_title(f"{r.upper()} degree CCDF"); ax.set_xlabel("degree + 1"); ax.legend(fontsize=8)
+        ax.set_title(f"{REL_NAMES.get(r, r.upper())} degree CCDF"); ax.set_xlabel("degree + 1"); ax.legend(fontsize=8)
     fig.tight_layout(); fig.savefig(FIG / f"eda_degree_{tag}.png", dpi=150); plt.close(fig)
 
     # 4. temporal: reviews and fraud per equal-count window (rebuilt graph only)
