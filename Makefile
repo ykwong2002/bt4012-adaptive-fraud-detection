@@ -74,6 +74,7 @@ graph-loop:
 	for l in 0.05 0.1; do $(PY) scripts/11_graph_loop.py --source mat --monitor-only --scenarios attack --level $$l; done
 	$(PY) scripts/11_graph_loop.py --source mat --level 0.2
 	$(PY) scripts/12_stats.py --tag mat
+	$(PY) scripts/14_business.py
 
 # harder attack: injected features further from the fraud templates (noise in training sd). At the
 # default 0.1 the incumbent is not hurt by the injection; this run checks whether it can be.
@@ -88,18 +89,21 @@ graph-loop-hard:
 raw-all:
 	$(PY) scripts/02_build_graph.py --source raw
 	$(PY) scripts/03_eda.py --source raw
+	$(PY) scripts/03b_variables.py
 	$(PY) scripts/04_llm_score.py --source raw --collect
 	$(PY) scripts/05_distil_edges.py --source raw
 	$(PY) scripts/06_train.py --source raw
 	for m in soft softrank; do $(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode $$m; done
 	$(PY) scripts/06_train.py --source raw --weights data/processed/edge_scores_raw.npz --mode hard --tau 0.5
 	$(PY) scripts/05c_edge_diagnostics.py --source raw
+	$(PY) scripts/05d_pair_case_study.py
 	$(PY) scripts/07_drift.py --source raw
 	$(PY) scripts/07_drift.py --source raw --same-window
 	$(PY) scripts/08_selftrain.py --source raw
 	$(PY) scripts/08_selftrain.py --source raw --weights data/processed/edge_scores_raw.npz
 	$(PY) scripts/09_adversarial.py --source raw --recover
 	$(PY) scripts/12_stats.py --tag raw
+	$(PY) scripts/14_business.py
 	$(PY) scripts/10_figures.py --tag raw
 
 # every reported number and figure (graph-only track, D18), from a fresh clone

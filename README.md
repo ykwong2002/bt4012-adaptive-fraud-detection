@@ -46,13 +46,16 @@ incomplete), about 3 h on a laptop CPU. Needs the raw release under `data/raw/ye
 |---|---|---|
 | build the YelpZip slice (strict text join, point-in-time features, 48k-review slice) | `uv run python scripts/02_build_graph.py --source raw` | `data/processed/graph_raw.npz` |
 | EDA | `uv run python scripts/03_eda.py --source raw` | `eda_*_raw.csv`, `outputs/figures/eda_*_raw.png` |
+| variable summary: type, meaning, use, leakage control, legit-vs-fraud effect size | `uv run python scripts/03b_variables.py` | `variables_raw.csv` |
 | LLM review fields + pair judgements (cached; `--dry-run` quotes the cost of anything missing) | `uv run python scripts/04_llm_score.py --source raw --collect` | `data/llm/*.parquet` |
 | distilled edge scorer + diagnostics (D4, D15) | `uv run python scripts/05_distil_edges.py --source raw`, `05c_edge_diagnostics.py --source raw` | `distil_metrics_raw.csv`, `edge_auc_centred_raw.csv`, `data/processed/edge_scores_raw.npz` |
+| why the text scorer is at chance around fraud: LLM pair judgements by pair type (D22; example texts go to git-ignored `data/processed/`) | `uv run python scripts/05d_pair_case_study.py` | `pair_case_study_*_raw.csv` |
 | 4 models × 5 seeds, raw graph and soft / softrank / hard refined graphs | `uv run python scripts/06_train.py --source raw [--weights data/processed/edge_scores_raw.npz --mode soft\|softrank\|hard --tau 0.5]` | `results_raw_*.csv` |
 | drift monitor (+ same-window control) | `uv run python scripts/07_drift.py --source raw [--same-window]` | `drift_*_raw*.csv` |
 | alarm-triggered self-training + bias audit, raw and refined graph | `uv run python scripts/08_selftrain.py --source raw [--weights data/processed/edge_scores_raw.npz]` | `selftrain_*_raw_*.csv` |
 | camouflage injection with recovery | `uv run python scripts/09_adversarial.py --source raw --recover` | `adversarial_*_raw.csv` |
 | paired intervals; figures | `uv run python scripts/12_stats.py --tag raw`, `10_figures.py --tag raw` | `stats_*_raw*.csv`, `outputs/figures/fig_*_raw*.png` |
+| operating point per window: reviews flagged, fraud caught, reviews checked per fraud found | `uv run python scripts/14_business.py` | `business_raw.csv` |
 
 **YelpChi graph-only track** (supporting, D11–D17): `make graph-all` runs every step below in order
 (several hours on a laptop CPU; the scorer curve and the loop dominate). Each step can also be run on
@@ -65,8 +68,8 @@ its own:
 | baselines under arrival waves, 4 models × 5 seeds (D13, D14) | `uv run python scripts/06_train.py --source mat --waves` | `results_mat_waves_raw_graph*.csv` |
 | scorer curve: noisy oracle, cosine, feature, R-U-R profile (D12, D15) | `make graph-scorers` | `results_mat_waves_*_softrank*.csv`, `scorer_curve_mat_waves.csv` |
 | edge diagnostics: global vs fraud-centred AUC (D15) | `uv run python scripts/05c_edge_diagnostics.py --source mat` | `edge_auc_centred_mat.csv` |
-| adaptive loop: monitor, alarm, self-training, bias audit (D16); paired intervals (D17) | `make graph-loop` | `graph_loop_*_mat_lvl*.csv`, `stats_rewiring_mat_waves.csv`, `stats_loop_mat_lvl0.2.csv` |
-| all report figures | `uv run python scripts/10_figures.py` | `outputs/figures/fig_*_mat*.png` |
+| adaptive loop: monitor, alarm, self-training, bias audit (D16); paired intervals (D17); operating point | `make graph-loop` | `graph_loop_*_mat_lvl*.csv`, `stats_rewiring_mat_waves.csv`, `stats_loop_mat_lvl0.2.csv`, `business_mat_lvl0.2.csv` |
+| all report figures, incl. the scorer bar: gain vs fraud-centred edge AUC (D21) | `uv run python scripts/10_figures.py` | `outputs/figures/fig_*_mat*.png`, `scorer_bar_mat_waves.csv` |
 
 Tables land in `outputs/tables/`. Every script writes `outputs/runs/<name>/run.json` with the git SHA,
 config hash, seed and wall time. `make all SMOKE=1` runs the pipeline on a 2k-node subsample in minutes.

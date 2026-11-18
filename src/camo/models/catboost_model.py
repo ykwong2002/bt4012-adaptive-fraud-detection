@@ -12,7 +12,6 @@ from __future__ import annotations
 import numpy as np
 from catboost import CatBoostClassifier
 
-
 DEG_SCALE = 10_000
 
 

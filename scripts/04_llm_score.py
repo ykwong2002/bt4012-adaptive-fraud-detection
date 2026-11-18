@@ -9,7 +9,6 @@ on sampled training-period edges (+ swapped test-retest subset). Results are cac
 from __future__ import annotations
 
 import json
-import os
 
 import numpy as np
 import pandas as pd

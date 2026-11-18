@@ -2,6 +2,38 @@
 
 Each entry: what we decided, why, what we rejected. Add to the top.
 
+## D22 2026-11-18 Why the text scorer is at chance around fraud: the signal is per review, not per edge
+`05d_pair_case_study.py` splits the 18,000 cached LLM pair judgements (prompt v2) by pair type
+(`pair_case_study_*_raw.csv`). (1) The LLM judgement itself is at chance around fraud nodes
+(fraud-centred AUC 0.55 R-S-R, 0.51 R-T-R), so the distilled scorer's 0.50 (D20) is not a distillation
+loss. (2) Fraud-fraud pairs get no more fit than fraud-legit (R-S-R 0.50 vs 0.47; R-T-R 0.47 vs 0.47):
+two fraud reviews differ as much as two legit ones (field distance 0.19-0.23 vs 0.21-0.22; fraud-legit
+0.22-0.25), and the judgement mostly tracks field similarity (r = 0.60). (3) 38 % of fraud-legit pairs
+are judged fitting; in those the fraud review is nearly as specific as its legit neighbour (0.36 vs
+0.41), while in pairs judged not fitting it is generic (0.28). Random examples read as genuine
+first-hand visits. (4) Per review, the text does carry signal: the best LLM field separates fraud
+nearly as well as the best behavioural feature (specificity AUC 0.65 vs u_n_prev 0.72, u_first_review
+0.69). Fraud reviews whose edges the LLM keeps are first-time reviewers as often as those it
+down-weights (77 % vs 79 %; 73 % of all fraud), so text and behaviour do not split the fakes between them.
+Reading: the text signal exists at the review level but is lost when it is asked as a pair question,
+because fakes are not one "kind" of evidence. Future direction: use the LLM fields as node features
+rather than edge evidence. The pair sample is stratified by cosine bin (04), so shares describe the
+judged sample. Example texts stay git-ignored.
+Rejected: concluding that the label is purely behavioural (single-feature AUCs are too close to
+support it); a combined text-vs-behaviour classifier (a new model to support one sentence).
+
+## D21 2026-11-17 The scorer bar is read on fraud-centred edge AUC, and it is still optimistic
+`fig_scorer_bar_mat_waves.png` (`10_figures.scorer_bar`, table `scorer_bar_mat_waves.csv`) plots the
+paired reweighting gain (D17) against fraud-centred edge AUC on R-S-R / R-T-R (D15), with each real
+`.mat` scorer drawn at both its fraud-centred and its global AUC, and the YelpZip text scorer's
+fraud-centred AUC (0.50) marked on the x-axis only. Moving to the fraud-centred axis removes the large
+miss for the R-U-R profile scorer (curve +0.044 / +0.049 at global 0.69, actual −0.012 / +0.010; at
+fraud-centred 0.48 the curve gives −0.006), but the curve over-predicts feature and cosine (+0.016 to
++0.033 at 0.62–0.64, actual −0.003 to +0.011). Mean |actual − curve| is 0.017 fraud-centred vs 0.020
+global. Reading: fraud-centred AUC is the right axis, but real errors concentrate on the edges that
+matter, so the curve is an upper bound on the gain at a given AUC, not a prediction (as D15 warned).
+Rejected: plotting YelpZip model gains on the `.mat` axes (never mix datasets in one figure).
+
 ## D20 2026-11-16 Text-track results on the YelpZip slice; YelpZip becomes the headline dataset
 The full proposal pipeline (04 → 05 → 06 raw vs refined → 07 → 08 → 09, `make raw-all`) ran on the
 D19 slice: 47,512 review fields and 18,480 pair judgements from `claude-haiku-5-5` (Message Batches,

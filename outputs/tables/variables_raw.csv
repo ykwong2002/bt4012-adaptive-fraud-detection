@@ -1,0 +1,34 @@
+group,variable,type,description,used_by,leakage_control,mean_legit,mean_fraud,cohen_d
+record,review_id,id,row of the metadata file; join key between metadata and review text,join,"strict join, raises on any unmatched review",,,
+record,user_id,categorical,reviewer account,"R-U-R relation, user features",-,,,
+record,product_id,categorical,restaurant,"R-S-R / R-T-R relations, product features",-,,,
+record,rating,ordinal 1-5,star rating,"R-S-R relation, rating features",-,,,
+record,date,date (day),posting date,"temporal windows, point-in-time cutoffs",-,,,
+record,label,binary,"1 = filtered by Yelp's recommender (release label -1), 0 = recommended",target only,never seen by edge scorers or the drift monitor,,,
+record,text,free text,review body,"LLM fields, embeddings, 3 style features",-,,,
+relation,R-U-R,edge,two reviews by the same user,all graph models,edge visible once both reviews exist,,,
+relation,R-S-R,edge,"same restaurant, same star rating",all graph models,edge visible once both reviews exist,,,
+relation,R-T-R,edge,"same restaurant, same month",all graph models,edge visible once both reviews exist,,,
+pit,u_n_prev,count,user's earlier reviews,"node features (not monitored: grows with time, D8)",uses only reviews dated on or before this one (tests/test_features_pit.py),5.8560786,0.9857703,-0.5710844
+pit,u_mean_rating_prev,continuous,user's mean rating over earlier reviews,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),3.9543517,3.9574924,0.0059324885
+pit,u_rating_dev_prev,continuous,|rating - user's earlier mean|,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),0.8299419,1.0451581,0.2589667
+pit,u_days_since_prev,continuous,"days since the user's previous review (3,650 if none)","node features (not monitored: grows with time, D8)",uses only reviews dated on or before this one (tests/test_features_pit.py),1383.839,2687.0776,0.7876499
+pit,u_sameday_n,count,user's reviews posted on the same day,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),1.499098,1.4413282,-0.04356129
+pit,u_first_review,binary,1 if this is the user's first review,"node features (not monitored: grows with time, D8)",uses only reviews dated on or before this one (tests/test_features_pit.py),0.36126795,0.73231596,0.80323327
+pit,p_n_prev,count,restaurant's earlier reviews,"node features (not monitored: grows with time, D8)",uses only reviews dated on or before this one (tests/test_features_pit.py),337.8482,331.159,-0.033912685
+pit,p_mean_rating_prev,continuous,restaurant's mean rating over earlier reviews,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),3.9832385,3.9841857,0.0035254858
+pit,rating_dev_p,continuous,rating - restaurant's earlier mean,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),-0.0017000067,-0.11225316,-0.09494196
+pit,rating_extreme,binary,1 if the rating is 1 or 5 stars,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),0.3874845,0.5351619,0.29954672
+pit,p_rate_30d,count,restaurant's reviews in the previous 30 days,"node features (not monitored: grows with time, D8)",uses only reviews dated on or before this one (tests/test_features_pit.py),12.3837595,11.897092,-0.061092045
+pit,text_len_log,continuous,log(1 + word count),"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),4.480565,4.060065,-0.43961278
+pit,caps_ratio,continuous,share of letters that are capitals,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),0.03618412,0.038061935,0.059678514
+pit,excl_count,count,number of exclamation marks,"node features, drift monitor",uses only reviews dated on or before this one (tests/test_features_pit.py),1.2123797,1.1977727,-0.0061892327
+llm,specificity,score 0-1,"concrete, checkable details (dishes, prices, staff names)","edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.3987592249841857,0.30206434316353886,-0.5255489061842123
+llm,experiential_evidence,score 0-1,a first-hand visit is narrated,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.40305695475950615,0.31380078366673536,-0.38472479287857037
+llm,generic_praise,score 0-1,interchangeable superlatives,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.40467235199025364,0.45132604660754794,0.19736798029362684
+llm,promotional_tone,score 0-1,reads like marketing copy,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.25158048871916217,0.2664879356568364,0.07616088226013057
+llm,first_person_detail,score 0-1,"personal context (company, reason for visit)","edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.4428402408453014,0.3680408331614766,-0.3299969593843057
+llm,named_concretes,count,distinct named concrete items,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,3.4072581589860134,2.214477211796247,-0.4765581758718343
+llm,exclamation_heavy,binary,style flag,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.1405243305297191,0.166838523406888,0.07300881516470979
+llm,all_caps_words,binary,style flag,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.14994260009839983,0.12951123943081047,-0.058952736194408016
+llm,template_like,binary,reads like a filled template,"edge scorer, drift monitor",from this review's own text only; never asked for a fraud verdict,0.026825668298854344,0.04990719736028047,0.12037566119369367

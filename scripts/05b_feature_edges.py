@@ -17,8 +17,8 @@ from camo.eval.splits import equal_count_windows, temporal_plan
 from camo.eval.waves import assign_waves
 from camo.graph.feature_scorer import FeatureEdgeScorer, cosine_scores
 from camo.graph.homophily import homophily_table
-from camo.graph.rur_scorer import rur_profile_scores
 from camo.graph.rewire import edge_label_auc, noisy_oracle_scores, oracle_scores, tau_sweep_table
+from camo.graph.rur_scorer import rur_profile_scores
 
 TAB = ROOT / "outputs" / "tables"
 
