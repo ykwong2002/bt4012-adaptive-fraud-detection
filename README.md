@@ -93,25 +93,26 @@ fixture without the raw files or an API key.
 | report item | output | script |
 |---|---|---|
 | Table 1 (dataset summary) | `eda_summary_raw.csv`, `eda_summary_mat.csv` | `03_eda.py` |
-| Table 2 (variables) | `eda_features_raw.csv`, `variables_raw.csv` | `03_eda.py`, `03b_variables.py` |
-| Table 3 (time windows) | `eda_windows_raw.csv` | `03_eda.py` |
-| Table 4 (raw vs refined graph) | `results_raw_*_summary.csv`, `stats_rewiring_raw.csv` | `06_train.py`, `12_stats.py` |
-| Table 5 (edge scorer quality) | `edge_auc_centred_raw.csv` | `05c_edge_diagnostics.py` |
+| Table 2 (raw vs refined graph) | `results_raw_*_summary.csv`, `stats_rewiring_raw.csv` | `06_train.py`, `12_stats.py` |
+| Table 3 (edge scorer quality) | `edge_auc_centred_raw.csv` | `05c_edge_diagnostics.py` |
 | Section 5.1 pair analysis | `distil_metrics_raw.csv`, `pair_case_study_*_raw.csv` | `05_distil_edges.py`, `05d_pair_case_study.py` |
 | Section 5.2 drift numbers | `drift_*_raw.csv`, `drift_*_raw_samewin.csv` | `07_drift.py` |
-| Table 6 (self-training bias audit) | `selftrain_*_raw_raw_graph.csv`, `stats_selftrain_raw_raw_graph.csv` | `08_selftrain.py`, `12_stats.py` |
+| Table 4 (self-training bias audit) | `selftrain_*_raw_raw_graph.csv`, `stats_selftrain_raw_raw_graph.csv` | `08_selftrain.py`, `12_stats.py` |
 | Section 5.4 injection and recovery | `adversarial_*_raw.csv` | `09_adversarial.py` |
 | Section 5.5 operating point | `business_raw.csv` | `14_business.py` |
 | Table A1 (scorer curve) | `stats_rewiring_mat_waves.csv`, `scorer_curve_mat_waves.csv` | `make graph-scorers`, `12_stats.py` |
 | Table A2 (loop on `YelpChi.mat`) | `graph_loop_*_mat_lvl0.2.csv`, `stats_loop_mat_lvl0.2.csv` | `11_graph_loop.py`, `12_stats.py` |
-| Appendix C | `results_raw_raw_graph_summary.csv` | `06_train.py` |
-| Figure 1 | hand-drawn illustration, not generated | - |
+| Appendix B (degradation label, AUROC check) | `results_raw_raw_graph_summary.csv` | `06_train.py` |
+| Table D1 (variables) | `eda_features_raw.csv`, `variables_raw.csv` | `03_eda.py`, `03b_variables.py` |
+| Table D2 (time windows) | `eda_windows_raw.csv` | `03_eda.py` |
+| Figure 1 (camouflage illustration) | drawn diagram, not generated | - |
 | Figure 2 (homophily) | `outputs/figures/eda_homophily_raw.png` | `03_eda.py` |
-| Figure 3 (AUC-PR per window) | `outputs/figures/fig_headline_raw.png` | `10_figures.py` |
-| Figure 4 (drift monitor) | `outputs/figures/fig_drift_raw.png` | `10_figures.py` |
-| Figure 5 (injection) | `outputs/figures/fig_adversarial_raw.png` | `10_figures.py` |
-| Figure 6 (deployment loop) | `outputs/figures/fig_process.png` | `13_process_figure.py` |
-| Figure A1 (scorer bar) | `outputs/figures/fig_scorer_bar_mat_waves.png` | `10_figures.py` |
+| Figure 3 (system architecture) | drawn diagram, not generated | - |
+| Figure 4 (AUC-PR per window) | `outputs/figures/fig_headline_raw.png` | `10_figures.py` |
+| Figure 5 (drift monitor) | `outputs/figures/fig_drift_raw.png` | `10_figures.py` |
+| Figure 6 (injection) | `outputs/figures/fig_adversarial_raw.png` | `10_figures.py` |
+| Figure 7 (deployment loop) | drawn diagram, not generated (an earlier version is `outputs/figures/fig_process.png`) | `13_process_figure.py` for the earlier version |
+| Figure A1 (scorer curve) | `outputs/figures/fig_scorer_bar_mat_waves.png` | `10_figures.py` |
 | Figure A2 (bias audit per round) | `outputs/figures/fig_graph_loop_rounds_mat_lvl0.2.png` | `10_figures.py` |
 
 Tables are in `outputs/tables/` unless a path is given.
