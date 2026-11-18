@@ -24,7 +24,8 @@ TAB = ROOT / "outputs" / "tables"
 EVIDENCE = ["specificity", "experiential_evidence", "generic_praise", "promotional_tone", "first_person_detail"]
 PROFILE = EVIDENCE + ["named_concretes"]
 TEXT_STYLE = ["text_len_log", "caps_ratio", "excl_count"]
-FIT = 0.6   # "judged fitting": the top half of the LLM's scale (0.6 and above)
+FIT = 0.6   # "judged fitting": the top half of the LLM's scale (0.6 and above); stricter than the hard
+            # edge cut tau = 0.5 used in training, so "fitting" is not the same as "kept by the hard graph"
 
 
 def auc(y, s) -> float:
@@ -74,7 +75,7 @@ def tables(nt, pit, rf, p):
     fl = p[p["type"] == "fraud-legit"].copy()
     fraud_is_u = fl["label_u"] == 1
     fl["fraud"], fl["legit"] = np.where(fraud_is_u, fl["u"], fl["v"]), np.where(fraud_is_u, fl["v"], fl["u"])
-    fl["judged"] = np.where(fl["relative_fit"] >= FIT, "fitting (edge kept)", "not fitting (edge down-weighted)")
+    fl["judged"] = np.where(fl["relative_fit"] >= FIT, f"fitting (fit >= {FIT})", f"not fitting (fit < {FIT})")
     prof = []
     for j, g in fl.groupby("judged"):
         row = {"judged": j, "n": len(g), "share": len(g) / len(fl)}
